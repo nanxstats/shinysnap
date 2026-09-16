@@ -1,0 +1,6 @@
+# shinysnap
+
+``` r
+
+library(shinysnap)
+```
