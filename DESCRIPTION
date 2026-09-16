@@ -7,12 +7,14 @@ Authors@R: c(
     )
 Description: What the package does (one paragraph, 2+ sentences).
 License: MIT + file LICENSE
+URL: https://nanx.me/shinysnap/, https://github.com/nanxstats/shinysnap
+BugReports: https://github.com/nanxstats/shinysnap/issues
 Encoding: UTF-8
-Suggests: 
+Suggests:
     knitr,
     rmarkdown,
     testthat (>= 3.0.0)
-Config/testthat/edition: 3
-Config/roxygen2/version: 8.1.0
-Roxygen: list(markdown = TRUE)
 VignetteBuilder: knitr
+Config/testthat/edition: 3
+Roxygen: list(markdown = TRUE)
+Config/roxygen2/version: 8.1.0

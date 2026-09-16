@@ -8,6 +8,15 @@
 \description{
 What the package does (one paragraph, 2+ sentences).
 }
+\seealso{
+Useful links:
+\itemize{
+  \item \url{https://nanx.me/shinysnap/}
+  \item \url{https://github.com/nanxstats/shinysnap}
+  \item Report bugs at \url{https://github.com/nanxstats/shinysnap/issues}
+}
+
+}
 \author{
 \strong{Maintainer}: Nan Xiao \email{me@nanx.me} (\href{https://orcid.org/0000-0002-0250-5673}{ORCID}) [copyright holder]
 
