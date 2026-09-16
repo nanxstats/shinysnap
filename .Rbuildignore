@@ -1,2 +1,4 @@
 ^shinysnap\.Rproj$
 ^\.Rproj\.user$
+
+^LICENSE\.md$
