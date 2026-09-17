@@ -2,8 +2,8 @@ version = 2
 okr-version = "0.1.10"
 generated = "2026-09-16T00:00:00Z"
 snapshot = "2026-09-16"
-config-digest = "sha256:fbc2bd78c42153b6f310359bdcfe205073c0f720f8e97e805ba42e6eae610823"
-environment-digest = "sha256:e2d663762d6bb204932b553d9027577eaf218a5db1376e3559b239d929d6e4b0"
+config-digest = "sha256:d8af89d090688c7ff5da64fc836b4347237dab4a05cdc44901fbc83851869a6c"
+environment-digest = "sha256:27af0b1e70db8cf959ca2c2eccca7b7c682de94bcdc6601b35e1409ec78dca63"
 
 [[package]]
 name = "R6"
@@ -193,6 +193,13 @@ url = "https://packagemanager.posit.co/cran/2026-09-16/src/contrib/zmij_0.1.0.ta
 fetch-method = "tarball"
 tree-digest = "sha256:6f63e989d778503dcb2ddf8408686a96a36f27017c9f9688d2621110ecb61246"
 license = "MIT + file LICENSE"
+
+[[reference]]
+name = "extrachecks"
+source = "github::DavisVaughan/extrachecks"
+commit = "a37e1ee87e47e99ba0ed88a4dfe417141ca5d89e"
+fetch-method = "forge-tarball"
+tree-digest = "sha256:72798d72a73e0a440c376925b28ebef34bcb705be1ab187b9db4bb696a1c6aff"
 
 [[reference]]
 name = "shiny"

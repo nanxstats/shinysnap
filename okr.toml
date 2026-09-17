@@ -38,3 +38,4 @@ httpuv = "*"
 [references]
 shiny = "rstudio/shiny"
 shinyURL = "aoles/shinyURL"
+extrachecks = "DavisVaughan/extrachecks"
