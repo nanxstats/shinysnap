@@ -36,12 +36,9 @@ reference:
     contents:
       - snap_download_button
       - snap_file_input
-  - title: Interop
+  - title: Interoperability
     contents:
       - snap_as_bookmark_url
-  - title: Package
-    contents:
-      - shinysnap-package
 
 articles:
   - title: Guides

@@ -44,7 +44,7 @@ Initial release.
   restorers cover shiny, bslib, and shinyMatrix inputs, and
   `window.shinysnap.registerAdapter()` is the JavaScript-side equivalent.
 
-## Interop
+## Interoperability
 
 - `snap_as_bookmark_url()` encodes a snapshot like URL bookmarking does,
   `snap_as_test_inputs()` feeds `shiny::testServer()`, and

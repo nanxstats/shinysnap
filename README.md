@@ -134,7 +134,7 @@ See `vignette("shinysnap")` for the full comparison and
 * `snap_download_button()`, `snap_download_handler()`,
   `snap_file_input()`, `snap_file_restore()`: the UI boilerplate.
 * `snap_as_bookmark_url()`, `snap_as_test_inputs()`, `snap_diff()`:
-  interop with bookmarking, `testServer()`, and version control.
+  interoperate with bookmarking, `testServer()`, and version control.
 
 ## License
 
