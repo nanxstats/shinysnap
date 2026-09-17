@@ -27,6 +27,13 @@ shinyobjects = "*"
 aurora = "*"
 shinytest2 = "*"
 chromote = "*"
+R6 = "*"
+htmltools = "*"
+promises = "*"
+jsonlite = "*"
+withr = "*"
+zip = "*"
+zmij = "*"
 
 [references]
 shinyURL = "aoles/shinyURL"

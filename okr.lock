@@ -2,8 +2,17 @@ version = 2
 okr-version = "0.1.10"
 generated = "2026-09-16T00:00:00Z"
 snapshot = "2026-09-16"
-config-digest = "sha256:5666ccfd3f1ad8aee42b7ae33d9ff0ef8044cc54c703b0e34ef0f1a17bece064"
-environment-digest = "sha256:57fce1116a6cfb53fed67af58ca8f66b4b513f39bd2eb34930733020153dc591"
+config-digest = "sha256:3292a47e18bf626c094c3821c88328a4412bc4ca3ae1dfc7196d5ff3b0f1edce"
+environment-digest = "sha256:365c4cd0970b85851c0b891b0616deeadf6126cb0f8ad30d5fae8a7066627dac"
+
+[[package]]
+name = "R6"
+version = "2.6.1"
+source = "cran"
+url = "https://packagemanager.posit.co/cran/2026-09-16/src/contrib/R6_2.6.1.tar.gz"
+fetch-method = "tarball"
+tree-digest = "sha256:a1a7b176632943a2215fb7e3db53718b7b75006a0b1ffba66af6a43bff243d81"
+license = "MIT + file LICENSE"
 
 [[package]]
 name = "aurora"
@@ -58,6 +67,33 @@ url = "https://packagemanager.posit.co/cran/2026-09-16/src/contrib/formods_0.2.2
 fetch-method = "tarball"
 tree-digest = "sha256:cee036fc4ee7ee55c701ae1d033d4eeeecd28726b0b769d74888d62c3a46bf72"
 license = "BSD_2_clause + file LICENSE"
+
+[[package]]
+name = "htmltools"
+version = "0.5.9"
+source = "cran"
+url = "https://packagemanager.posit.co/cran/2026-09-16/src/contrib/htmltools_0.5.9.tar.gz"
+fetch-method = "tarball"
+tree-digest = "sha256:9fd497a95b004ef0c04af1b149cbb4c083c26349aea9c4b8a610b33350400b3a"
+license = "GPL (>= 2)"
+
+[[package]]
+name = "jsonlite"
+version = "2.0.0"
+source = "cran"
+url = "https://packagemanager.posit.co/cran/2026-09-16/src/contrib/jsonlite_2.0.0.tar.gz"
+fetch-method = "tarball"
+tree-digest = "sha256:dd2132767741931c2d7f3082602579af94a8acb59a42e760463067becb7e5119"
+license = "MIT + file LICENSE"
+
+[[package]]
+name = "promises"
+version = "1.5.0"
+source = "cran"
+url = "https://packagemanager.posit.co/cran/2026-09-16/src/contrib/promises_1.5.0.tar.gz"
+fetch-method = "tarball"
+tree-digest = "sha256:a8808d1574b0ae2f27485b4da17c7f6fb516c04fe3bc42928659e59876385c0b"
+license = "MIT + file LICENSE"
 
 [[package]]
 name = "reactlog"
@@ -129,6 +165,33 @@ source = "cran"
 url = "https://packagemanager.posit.co/cran/2026-09-16/src/contrib/shinytest2_0.5.1.tar.gz"
 fetch-method = "tarball"
 tree-digest = "sha256:8721bc7bed73d8254043b12be75c6414ebac311a4668d88143a5b93b1bcd437e"
+license = "MIT + file LICENSE"
+
+[[package]]
+name = "withr"
+version = "3.0.3"
+source = "cran"
+url = "https://packagemanager.posit.co/cran/2026-09-16/src/contrib/withr_3.0.3.tar.gz"
+fetch-method = "tarball"
+tree-digest = "sha256:b4343ffc0f082e45cb1c9c44180bd075857a75cd34bbf37b8ee959c4b1afacb0"
+license = "MIT + file LICENSE"
+
+[[package]]
+name = "zip"
+version = "3.0.2"
+source = "cran"
+url = "https://packagemanager.posit.co/cran/2026-09-16/src/contrib/zip_3.0.2.tar.gz"
+fetch-method = "tarball"
+tree-digest = "sha256:71d10e2926cb111f0fba51496c70dcffca6d5a7962d06bfe62503513e7ae2850"
+license = "MIT + file LICENSE"
+
+[[package]]
+name = "zmij"
+version = "0.1.0"
+source = "cran"
+url = "https://packagemanager.posit.co/cran/2026-09-16/src/contrib/zmij_0.1.0.tar.gz"
+fetch-method = "tarball"
+tree-digest = "sha256:6f63e989d778503dcb2ddf8408686a96a36f27017c9f9688d2621110ecb61246"
 license = "MIT + file LICENSE"
 
 [[reference]]
