@@ -9,6 +9,7 @@
 ^pkgdown$
 
 ^AGENTS\.md$
+^DESIGN\.md$
 ^deps-src$
 ^okr\.toml$
 ^okr\.lock$
