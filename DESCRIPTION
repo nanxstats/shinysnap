@@ -5,11 +5,22 @@ Authors@R: c(
     person("Nan", "Xiao", email = "me@nanx.me", role = c("aut", "cre", "cph"),
            comment = c(ORCID = "0000-0002-0250-5673"))
     )
-Description: What the package does (one paragraph, 2+ sentences).
+Description: Take a snapshot of the state of a running 'shiny' application,
+    the current input values plus any server-side values you register, and
+    write it to a plain, human-readable JSON file that can be shared, kept
+    under version control, and hand-edited. Restore it later into a different
+    session without a page reload and without bookmarking. Restoring waits for
+    inputs rendered dynamically to appear, so no timing guesses are needed,
+    and reports which values were applied, which never appeared, and which
+    failed.
 License: MIT + file LICENSE
 URL: https://nanx.me/shinysnap/, https://github.com/nanxstats/shinysnap
 BugReports: https://github.com/nanxstats/shinysnap/issues
 Encoding: UTF-8
+Imports:
+    jsonlite,
+    utils,
+    zmij
 Suggests:
     knitr,
     rmarkdown,
