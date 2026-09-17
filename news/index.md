@@ -73,7 +73,7 @@ Initial release.
   `window.shinysnap.registerAdapter()` is the JavaScript-side
   equivalent.
 
-### Interop
+### Interoperability
 
 - [`snap_as_bookmark_url()`](https://nanx.me/shinysnap/reference/snap_as_bookmark_url.md)
   encodes a snapshot like URL bookmarking does,

@@ -146,7 +146,7 @@ cat(snap_serialize(list(inputs = list(
 #> {
 #>   "format": 1,
 #>   "app": {"name": null, "version": null},
-#>   "created": "2026-09-17T22:38:52Z",
+#>   "created": "2026-09-17T23:11:05Z",
 #>   "producer": {"shinysnap": "0.1.0", "shiny": "1.14.0", "r": "4.6.1"},
 #>   "inputs": {
 #>     "n": 1,

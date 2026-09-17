@@ -151,7 +151,7 @@ for how the restore works.
 - [`snap_as_bookmark_url()`](https://nanx.me/shinysnap/reference/snap_as_bookmark_url.md),
   [`snap_as_test_inputs()`](https://nanx.me/shinysnap/reference/snap_as_bookmark_url.md),
   [`snap_diff()`](https://nanx.me/shinysnap/reference/snap_diff.md):
-  interop with bookmarking,
+  interoperate with bookmarking,
   [`testServer()`](https://rdrr.io/pkg/shiny/man/testServer.html), and
   version control.
 

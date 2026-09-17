@@ -63,15 +63,9 @@
   [`snap_file_restore()`](https://nanx.me/shinysnap/reference/snap_file_input.md)
   : Restore-state upload and its handler
 
-## Interop
+## Interoperability
 
 - [`snap_as_bookmark_url()`](https://nanx.me/shinysnap/reference/snap_as_bookmark_url.md)
   [`snap_as_test_inputs()`](https://nanx.me/shinysnap/reference/snap_as_bookmark_url.md)
   [`snap_attachment()`](https://nanx.me/shinysnap/reference/snap_as_bookmark_url.md)
   : Interoperate with bookmarks, tests, and bundles
-
-## Package
-
-- [`shinysnap`](https://nanx.me/shinysnap/reference/shinysnap-package.md)
-  [`shinysnap-package`](https://nanx.me/shinysnap/reference/shinysnap-package.md)
-  : shinysnap: Save and Restore the State of 'shiny' Applications
