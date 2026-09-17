@@ -46,7 +46,7 @@ that shinysnap adds to the page.
     so dynamic UI that renders during the restore is built with the
     restored value *in the HTML*: no flash of defaults, and observers
     watching those inputs fire once, with the right value. The client
-    recognises such inputs and reports them as `constructed` rather than
+    recognizes such inputs and reports them as `constructed` rather than
     applying the value a second time.
 5.  The transaction settles once the page has been quiet for a moment
     (no busy state, no new UI, no new values, 0.3 seconds by default) or
