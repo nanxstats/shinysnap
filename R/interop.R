@@ -14,7 +14,8 @@
 #'   `fileInput()` held when the snapshot was taken, if the snapshot came
 #'   from a bundle (see [snap_write()]) or from the same session.
 #'
-#' @param x A snapshot object, a file path, or JSON text.
+#' @param x A snapshot object, a list of snapshot fields, a file path, or
+#'   JSON text.
 #' @param session A Shiny session whose `clientData` provides the base URL
 #'   (protocol, host, port, and path), or `NULL`.
 #' @param base_url The base URL to prepend, for example

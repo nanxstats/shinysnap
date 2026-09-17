@@ -21,8 +21,9 @@ snap_unserialize(
 )
 }
 \arguments{
-\item{x}{A snapshot object, as returned by \code{snap_take()} or
-\code{\link[=snap_unserialize]{snap_unserialize()}}.}
+\item{x}{A snapshot object, as returned by \code{\link[=snap_take]{snap_take()}} or
+\code{\link[=snap_unserialize]{snap_unserialize()}}, or a list with (some of) a snapshot's fields,
+for example \code{list(inputs = list(n = 5))}.}
 
 \item{format}{The text format. Only \code{"json"} is available.}
 

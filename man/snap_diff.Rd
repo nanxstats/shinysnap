@@ -7,7 +7,8 @@
 snap_diff(a, b)
 }
 \arguments{
-\item{a, b}{Snapshot objects, file paths, or JSON text.}
+\item{a, b}{Snapshot objects, lists of snapshot fields, file paths, or
+JSON text.}
 }
 \value{
 A data frame of class \code{shinysnap_diff} with one row per

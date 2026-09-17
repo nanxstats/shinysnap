@@ -425,7 +425,8 @@ snap_take <- function(session = shiny::getDefaultReactiveDomain(), ...,
 #' stored as `prefs` with a changed `digits` field shows up as
 #' `prefs$digits`.
 #'
-#' @param a,b Snapshot objects, file paths, or JSON text.
+#' @param a,b Snapshot objects, lists of snapshot fields, file paths, or
+#'   JSON text.
 #'
 #' @returns A data frame of class `shinysnap_diff` with one row per
 #'   difference and the columns `id`, `section` (`"inputs"`, `"values"`, or

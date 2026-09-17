@@ -17,8 +17,9 @@
 #' instead; because unserializing arbitrary data is unsafe, reading them back
 #' requires `trust = TRUE`, otherwise they decode to `NULL` with a warning.
 #'
-#' @param x A snapshot object, as returned by `snap_take()` or
-#'   [snap_unserialize()].
+#' @param x A snapshot object, as returned by [snap_take()] or
+#'   [snap_unserialize()], or a list with (some of) a snapshot's fields,
+#'   for example `list(inputs = list(n = 5))`.
 #' @param format The text format. Only `"json"` is available.
 #' @param pretty Pretty-print with two-space indentation (the default) or
 #'   emit compact JSON on one line.
@@ -292,7 +293,8 @@ decode_section <- function(x, name, ctx) {
 #' [snap_attachment()] returns the local paths of the extracted uploads and
 #' bundled objects are decoded only with `trust = TRUE`.
 #'
-#' @param x A snapshot object.
+#' @param x A snapshot object, or a list with (some of) a snapshot's
+#'   fields (see [snap_serialize()]).
 #' @param path The file path.
 #' @param format `"auto"` picks the format from the extension (`.json`,
 #'   `.zip`, or `.rds`); otherwise the format to use regardless of the

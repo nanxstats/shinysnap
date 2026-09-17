@@ -1,0 +1,165 @@
+---
+title: "Restoring custom inputs"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Restoring custom inputs}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+shinysnap restores an input by handing its client-side binding the same
+message the input's `update*()` function would send. For most inputs that
+message is `{value: x}`, and that is the default. Some bindings want more,
+or something else, and for those a *restorer* says what to send. This
+vignette shows how to write one, using the shinyMatrix input that ships
+with the package as the worked example, and how to do the same on the
+JavaScript side with an *adapter*.
+
+## Which bindings are covered
+
+```{r}
+library(shinysnap)
+snap_restorers()
+```
+
+Everything not listed uses the default `list(value = value)`. Inputs of
+shinyWidgets and other packages are therefore restored with the default
+too, which is right for those whose `receiveMessage()` accepts `{value}`
+and silently wrong for the others. Rather than guess, register a restorer
+for the bindings you use; the recipe below takes a few minutes per input.
+
+## The restorer contract
+
+A restorer is a function of four arguments that returns the message to send
+as a list, or `NULL` to skip the input:
+
+```{r, eval = FALSE}
+function(id, value, binding, session) list(value = value)
+```
+
+* `id` is the fully namespaced input id.
+* `value` is the value stored in the snapshot, exactly what `input$id`
+  returned when the snapshot was taken.
+* `binding` is the name the client-side binding was registered under
+  (`"shiny.sliderInput"`, `"shinyMatrix.matrixNumeric"`, ...), as recorded
+  in the snapshot's `bindings` section.
+* `session` is the session being restored.
+
+Register it for a binding name, or for one input id, with
+`snap_restorer()`. A registration with `session = NULL` (the default) is
+global, which is what a package or an app's `global.R` wants; a
+registration with a session applies to that session only. Resolution goes
+from the most specific to the least: a session restorer for the id, a
+session restorer for the binding, a global restorer for the id or the
+binding, the built-in one, the default.
+
+A restorer must not call `update*()` functions itself. Those go through
+`session$sendInputMessage()`, which drops messages for inputs that are not
+on the page yet; the whole point of a restorer is to return the payload so
+that shinysnap can deliver it when the input exists.
+
+## Finding the payload: the recipe
+
+1. Open the input's `update*()` function and keep the part that carries
+   the value. For `shinyMatrix::updateMatrixInput()` that is:
+
+   ```{r, eval = FALSE}
+message <- list(value = list(
+  data = value,
+  rownames = rownames(value),
+  colnames = colnames(value)
+))
+session$sendInputMessage(inputId, message)
+   ```
+
+2. Open the binding's `receiveMessage()` in the package's JavaScript to
+   confirm the shape it reads. shinyMatrix's reads `data.value.data`,
+   `data.value.rownames`, and `data.value.colnames`, and treats missing
+   names as empty arrays.
+
+3. Check the binding's `getValue()`, because shinysnap compares it with
+   the expected value after applying the message and reports `mismatched`
+   when they differ. shinyMatrix's returns
+   `{data, rownames, colnames}` with the names as arrays. When that shape
+   differs from the message's `value`, attach the expected value as the
+   `expect` attribute of the returned list; when the message has no `value`
+   key at all, no comparison is made.
+
+4. Write the restorer. The built-in one for shinyMatrix is:
+
+   ```{r, eval = FALSE}
+restore_matrix <- function(id, value, binding, session) {
+  if (is.null(value)) {
+    return(NULL)
+  }
+  if (!is.matrix(value)) value <- as.matrix(value)
+  rn <- rownames(value)
+  cn <- colnames(value)
+  data <- value
+  dimnames(data) <- NULL
+  payload <- list(value = list(data = data, rownames = rn, colnames = cn))
+  attr(payload, "expect") <- list(list(
+    data = data,
+    rownames = as.list(if (is.null(rn)) character() else rn),
+    colnames = as.list(if (is.null(cn)) character() else cn)
+  ))
+  payload
+}
+
+snap_restorer("shinyMatrix.matrixNumeric", restore_matrix)
+snap_restorer("shinyMatrix.matrixCharacter", restore_matrix)
+   ```
+
+   Note the binding names: shinyMatrix registers its binding without a
+   name, so the client script falls back to the type the binding reports
+   for the element. Look at the `bindings` section of a snapshot taken
+   from your app to see the name to register for.
+
+5. Restore a snapshot and read the report. `applied` means the message was
+   accepted and the widget shows the value; `mismatched` shows in `detail`
+   what the widget reports instead; `failed` carries the JavaScript error.
+
+Payloads are serialized with the same settings `session$sendInputMessage()`
+uses: length-one vectors become scalars, `NULL` becomes `null`, dates become
+`"YYYY-MM-DD"` strings, and matrices become row-major nested arrays. A
+binding that wants an array even for a single value needs `as.list(value)`;
+`radioButtons`, for instance, wants a scalar, while `checkboxGroupInput`
+accepts either.
+
+## Adapters: the JavaScript side
+
+Component authors who own the JavaScript can transform the message in the
+browser instead. An adapter receives the message, the element, the binding,
+and the whole record, and returns the message to pass to `receiveMessage()`
+(or `null` to skip the input):
+
+```js
+window.shinysnap.registerAdapter("mypkg.fancyInput", function (message, el, binding, record) {
+  // fancyInput's receiveMessage() wants {selected: [...]}, and its
+  // getValue() returns the same array.
+  return { selected: [].concat(message.value) };
+});
+```
+
+Adapters run after the R-side restorer and before the `shiny:updateinput`
+event, which is triggered exactly as Shiny's own message handler triggers
+it; a handler that calls `preventDefault()` on that event skips the input
+(reported as `skipped`).
+
+## Candidates
+
+These inputs are known to need a restorer or an adapter and are not
+covered yet; contributions with a verified payload are welcome:
+`shinyWidgets::pickerInput()`, `shinyWidgets::airDatepickerInput()`,
+`shinyWidgets::numericRangeInput()`, `shinyWidgets::sliderTextInput()`,
+and `shinyWidgets::virtualSelectInput()`. Inputs that are not bound
+elements at all (`plotly` events, `DT` row selections, values set from
+JavaScript with `Shiny.setInputValue()`) cannot be restored through a
+binding and are not captured.

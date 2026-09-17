@@ -22,7 +22,8 @@ snap_read(
 )
 }
 \arguments{
-\item{x}{A snapshot object.}
+\item{x}{A snapshot object, or a list with (some of) a snapshot's
+fields (see \code{\link[=snap_serialize]{snap_serialize()}}).}
 
 \item{path}{The file path.}
 

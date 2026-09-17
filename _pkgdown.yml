@@ -5,3 +5,52 @@ template:
   bslib:
     preset: "bootstrap"
   math-rendering: "mathjax"
+
+reference:
+  - title: Configure
+    contents:
+      - snap_enable
+      - snap_dependency
+      - snap_exclude
+  - title: Snapshot
+    contents:
+      - snap_take
+      - snap_inputs
+      - print.shinysnap
+      - snap_diff
+  - title: Files
+    contents:
+      - snap_write
+      - snap_serialize
+  - title: Restore
+    contents:
+      - snap_restore
+      - snap_is_restoring
+  - title: Hooks and restorers
+    contents:
+      - snap_track
+      - snap_on_save
+      - snap_on_restore
+      - snap_restorer
+  - title: UI helpers
+    contents:
+      - snap_download_button
+      - snap_file_input
+  - title: Interop
+    contents:
+      - snap_as_bookmark_url
+  - title: Package
+    contents:
+      - shinysnap-package
+
+articles:
+  - title: Guides
+    navbar: ~
+    contents:
+      - shinysnap
+      - dynamic-ui
+      - custom-inputs
+      - migrating-from-bookmarks
+  - title: Reference
+    contents:
+      - format-spec

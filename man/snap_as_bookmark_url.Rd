@@ -13,7 +13,8 @@ snap_as_test_inputs(x)
 snap_attachment(x, id)
 }
 \arguments{
-\item{x}{A snapshot object, a file path, or JSON text.}
+\item{x}{A snapshot object, a list of snapshot fields, a file path, or
+JSON text.}
 
 \item{session}{A Shiny session whose \code{clientData} provides the base URL
 (protocol, host, port, and path), or \code{NULL}.}
