@@ -101,14 +101,14 @@ str(snap_inputs(back))
 
 ## What gets saved
 
-* **Inputs** that are on the page, by fully namespaced id. Values of inputs
+- **Inputs** that are on the page, by fully namespaced id. Values of inputs
   whose dynamic UI has been removed are dropped, so the file describes the
   UI as the user saw it. Action buttons, passwords, and file uploads are
   never stored as input values (uploads can travel in a zip bundle, see
   `snap_write()`).
-* **Values** from the `reactiveValues` you register with `snap_track()`,
+- **Values** from the `reactiveValues` you register with `snap_track()`,
   plus whatever your `snap_on_save()` hooks add.
-* The app name and version, so a restore can refuse files from another
+- The app name and version, so a restore can refuse files from another
   app and migrate files from an older version.
 
 ## The before and after
@@ -146,7 +146,7 @@ observeEvent(input$restore_file, {
 })
 ```
 
-With shinysnap the same app needs no delays, no matrix special case, and
+With shinysnap, the same app needs no delays, no matrix special case, and
 no per-field fallbacks:
 
 ```{r, eval = FALSE}
@@ -171,23 +171,22 @@ snap_file_restore(
 
 What disappeared and why:
 
-* The delays: values for inputs that are not on the page yet wait in the
+- The delays: values for inputs that are not on the page yet wait in the
   browser and are applied the moment the input is bound, and dynamic UI that
   re-renders during the restore is built with the restored values already
   in place (see `vignette("dynamic-ui")`).
-* The matrix special case: the value of every input is turned into the
+- The matrix special case: the value of every input is turned into the
   message its binding understands by a *restorer*; shinysnap ships them
   for shiny, bslib, and shinyMatrix inputs (see `vignette("custom-inputs")`).
-* The `is.null()` fallbacks: the `migrate` hook is the one place where
+- The `is.null()` fallbacks: the `migrate` hook is the one place where
   defaults for values introduced after a file was saved belong.
-* The `.rds` file: JSON is readable, diffable, and safe to open (see
+- The `.rds` file: JSON is readable, diffable, and safe to open (see
   `vignette("format-spec")`).
 
 ## Learn more
 
-* `vignette("dynamic-ui")`: how a restore reaches inputs inside dynamic UI,
+- `vignette("dynamic-ui")`: how a restore reaches inputs inside dynamic UI,
   and how to read the restore report.
-* `vignette("custom-inputs")`: restoring inputs from other packages.
-* `vignette("format-spec")`: the file format.
-* `vignette("migrating-from-bookmarks")`: shinysnap next to
-  `enableBookmarking()`.
+- `vignette("custom-inputs")`: restoring inputs from other packages.
+- `vignette("format-spec")`: the file format.
+- `vignette("migrating-from-bookmarks")`: shinysnap next to `enableBookmarking()`.

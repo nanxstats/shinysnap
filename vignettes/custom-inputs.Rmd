@@ -44,13 +44,13 @@ as a list, or `NULL` to skip the input:
 function(id, value, binding, session) list(value = value)
 ```
 
-* `id` is the fully namespaced input id.
-* `value` is the value stored in the snapshot, exactly what `input$id`
+- `id` is the fully namespaced input id.
+- `value` is the value stored in the snapshot, exactly what `input$id`
   returned when the snapshot was taken.
-* `binding` is the name the client-side binding was registered under
+- `binding` is the name the client-side binding was registered under
   (`"shiny.sliderInput"`, `"shinyMatrix.matrixNumeric"`, ...), as recorded
   in the snapshot's `bindings` section.
-* `session` is the session being restored.
+- `session` is the session being restored.
 
 Register it for a binding name, or for one input id, with
 `snap_restorer()`. A registration with `session = NULL` (the default) is
