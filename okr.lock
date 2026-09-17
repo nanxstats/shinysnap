@@ -1,0 +1,139 @@
+version = 2
+okr-version = "0.1.10"
+generated = "2026-09-16T00:00:00Z"
+snapshot = "2026-09-16"
+config-digest = "sha256:5666ccfd3f1ad8aee42b7ae33d9ff0ef8044cc54c703b0e34ef0f1a17bece064"
+environment-digest = "sha256:57fce1116a6cfb53fed67af58ca8f66b4b513f39bd2eb34930733020153dc591"
+
+[[package]]
+name = "aurora"
+version = "0.1.12"
+source = "cran"
+url = "https://packagemanager.posit.co/cran/2026-09-16/src/contrib/aurora_0.1.12.tar.gz"
+fetch-method = "tarball"
+tree-digest = "sha256:1ba99087c0de1978486afbb2300ed91681a1f708267815c51f65bd531ef4443c"
+license = "MIT + file LICENSE"
+
+[[package]]
+name = "blockr.session"
+version = "0.1.0"
+source = "cran"
+url = "https://packagemanager.posit.co/cran/2026-09-16/src/contrib/blockr.session_0.1.0.tar.gz"
+fetch-method = "tarball"
+tree-digest = "sha256:4268e4556c3838558e9f53c198a0ec669039c8c35348f5b9fc2d10aa8c35581f"
+license = "GPL (>= 3)"
+
+[[package]]
+name = "bslib"
+version = "0.12.0"
+source = "cran"
+url = "https://packagemanager.posit.co/cran/2026-09-16/src/contrib/bslib_0.12.0.tar.gz"
+fetch-method = "tarball"
+tree-digest = "sha256:1cc6eef156c8ccd7553c0724fc468062c36566cff9e8118cecfb2a2d3640169e"
+license = "MIT + file LICENSE"
+
+[[package]]
+name = "chromote"
+version = "0.5.1"
+source = "cran"
+url = "https://packagemanager.posit.co/cran/2026-09-16/src/contrib/chromote_0.5.1.tar.gz"
+fetch-method = "tarball"
+tree-digest = "sha256:0d5ab14a7b55944c13962605ce1b8ae5a0d054dc5538e14218946e0c50d53df0"
+license = "MIT + file LICENSE"
+
+[[package]]
+name = "ellmer"
+version = "0.5.0"
+source = "cran"
+url = "https://packagemanager.posit.co/cran/2026-09-16/src/contrib/ellmer_0.5.0.tar.gz"
+fetch-method = "tarball"
+tree-digest = "sha256:477bda1311b98bbeb1e80b5f22fc8d7d0890c0d858d199406b49cabf81e93f32"
+license = "MIT + file LICENSE"
+
+[[package]]
+name = "formods"
+version = "0.2.2"
+source = "cran"
+url = "https://packagemanager.posit.co/cran/2026-09-16/src/contrib/formods_0.2.2.tar.gz"
+fetch-method = "tarball"
+tree-digest = "sha256:cee036fc4ee7ee55c701ae1d033d4eeeecd28726b0b769d74888d62c3a46bf72"
+license = "BSD_2_clause + file LICENSE"
+
+[[package]]
+name = "reactlog"
+version = "1.1.1"
+source = "cran"
+url = "https://packagemanager.posit.co/cran/2026-09-16/src/contrib/reactlog_1.1.1.tar.gz"
+fetch-method = "tarball"
+tree-digest = "sha256:1bf40c68d8e37f5cc7e255cb1074889b015740e56cce3c242654135f1bce5a7e"
+license = "GPL-3 | file LICENSE"
+
+[[package]]
+name = "rewind"
+version = "0.2.0"
+source = "cran"
+url = "https://packagemanager.posit.co/cran/2026-09-16/src/contrib/rewind_0.2.0.tar.gz"
+fetch-method = "tarball"
+tree-digest = "sha256:d7998f9955026cf4346205dc8e8dacc57a2af93278761ab0c13fcfca8badec63"
+license = "MIT + file LICENSE"
+
+[[package]]
+name = "shiny"
+version = "1.14.0"
+source = "cran"
+url = "https://packagemanager.posit.co/cran/2026-09-16/src/contrib/shiny_1.14.0.tar.gz"
+fetch-method = "tarball"
+tree-digest = "sha256:0cc66971554e504be56df39bfcd1396d3a9d7082741f7cd01d13ae5e5abf79b2"
+license = "MIT + file LICENSE"
+
+[[package]]
+name = "shinyMatrix"
+version = "0.8.1"
+source = "cran"
+url = "https://packagemanager.posit.co/cran/2026-09-16/src/contrib/shinyMatrix_0.8.1.tar.gz"
+fetch-method = "tarball"
+tree-digest = "sha256:fb7d4718e7a35eb761a68e49c3ec7fa21b1aa89bbc6444fafa367d77c5baf66a"
+license = "MIT + file LICENSE"
+
+[[package]]
+name = "shinychat"
+version = "0.5.0"
+source = "cran"
+url = "https://packagemanager.posit.co/cran/2026-09-16/src/contrib/shinychat_0.5.0.tar.gz"
+fetch-method = "tarball"
+tree-digest = "sha256:9306a5d3f1cc5877fc8953d88b0623b98067522bbfd192b491b235569f7002fc"
+license = "MIT + file LICENSE"
+
+[[package]]
+name = "shinyobjects"
+version = "0.2.0"
+source = "cran"
+url = "https://packagemanager.posit.co/cran/2026-09-16/src/contrib/shinyobjects_0.2.0.tar.gz"
+fetch-method = "tarball"
+tree-digest = "sha256:263f744df528f64a07f887f4f58d14c776fb69411e74031170fd3ced55e78e50"
+license = "GPL-3"
+
+[[package]]
+name = "shinystate"
+version = "0.1.0"
+source = "cran"
+url = "https://packagemanager.posit.co/cran/2026-09-16/src/contrib/shinystate_0.1.0.tar.gz"
+fetch-method = "tarball"
+tree-digest = "sha256:93cf1d9010a47e4fb8dc98690219e77868c24fabc6b59e6154c20411a699c3c4"
+license = "MIT + file LICENSE"
+
+[[package]]
+name = "shinytest2"
+version = "0.5.1"
+source = "cran"
+url = "https://packagemanager.posit.co/cran/2026-09-16/src/contrib/shinytest2_0.5.1.tar.gz"
+fetch-method = "tarball"
+tree-digest = "sha256:8721bc7bed73d8254043b12be75c6414ebac311a4668d88143a5b93b1bcd437e"
+license = "MIT + file LICENSE"
+
+[[reference]]
+name = "shinyURL"
+source = "github::aoles/shinyURL"
+commit = "ac5b6834e8d28b560b3523829aba190203d44321"
+fetch-method = "forge-tarball"
+tree-digest = "sha256:cd7b56070323cf15be4937cf1915f1f8fc5b9a5947fd37294e0a3c553b82337a"

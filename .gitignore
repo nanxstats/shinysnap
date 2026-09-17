@@ -1,4 +1,5 @@
 .Rproj.user
 
 inst/doc
-docs
+/docs/
+/deps-src/

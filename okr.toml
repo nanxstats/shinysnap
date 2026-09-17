@@ -1,0 +1,32 @@
+[project]
+r-version = "4.6.1"
+snapshot = "2026-09-16"
+strict = false
+
+[vendor]
+path = "deps-src"
+include-tests = true
+exclude = []
+gitignore = true
+
+[manifest]
+agents-file = false
+
+[packages]
+shiny = "*"
+bslib = "*"
+shinyMatrix = "*"
+shinystate = "*"
+rewind = "*"
+formods = "*"
+"blockr.session" = "*"
+shinychat = "*"
+ellmer = "*"
+reactlog = "*"
+shinyobjects = "*"
+aurora = "*"
+shinytest2 = "*"
+chromote = "*"
+
+[references]
+shinyURL = "aoles/shinyURL"
