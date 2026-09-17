@@ -29,12 +29,13 @@ difftime_units <- c("secs", "mins", "hours", "days", "weeks")
 #'
 #' @noRd
 codec_ctx <- function(unsupported = "error", verbose = FALSE, trust = FALSE,
-                      unknown_types = "error") {
+                      unknown_types = "error", keep_attachments = FALSE) {
   ctx <- new.env(parent = emptyenv())
   ctx$unsupported <- unsupported
   ctx$verbose <- verbose
   ctx$trust <- trust
   ctx$unknown_types <- unknown_types
+  ctx$keep_attachments <- keep_attachments
   ctx$notes <- character()
   ctx$untrusted <- character()
   ctx

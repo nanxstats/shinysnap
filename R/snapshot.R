@@ -237,3 +237,174 @@ summarize_ids <- function(ids, max = 8L) {
   if (n > max) shown <- paste0(shown, ", ...")
   sprintf("%d (%s)", n, shown)
 }
+
+#' Take a snapshot of the running app
+#'
+#' Captures the current input values and the registered server-side values
+#' of the session into a snapshot object, ready for [snap_write()] or
+#' [snap_serialize()]. Nothing is written to disk.
+#'
+#' @details
+#' What is captured:
+#'
+#' * Inputs, by fully namespaced id, exactly as `input$id` returns them.
+#'   With `live_only`, only inputs that are currently on the page are
+#'   kept, so values of inputs whose dynamic UI has been removed are not
+#'   carried along. Action buttons, password inputs, and values that shiny's
+#'   own serializers mark as unserializable are never captured; ids excluded
+#'   with `setBookmarkExclude()`, [snap_exclude()], or the `exclude` patterns
+#'   are dropped. File inputs are moved to the snapshot's `attachments`.
+#' * The name of the client-side input binding of each captured input, in
+#'   `bindings`.
+#' * Values: the fields of every `reactiveValues` registered with
+#'   [snap_track()], then whatever the [snap_on_save()] hooks add.
+#'
+#' The function isolates every read, so it never creates reactive
+#' dependencies. Inputs with a rate policy (text inputs debounce, sliders
+#' throttle) may lag the browser by a few hundred milliseconds; a snapshot
+#' taken from a download handler runs after the click has reached the
+#' server, which in practice is later than that.
+#'
+#' @param session The Shiny session. Defaults to the current session.
+#' @param ... Not used; arguments after `session` must be named.
+#' @param include,exclude Regular expressions matched against fully
+#'   namespaced ids, in addition to those configured with [snap_enable()].
+#' @param live_only Keep only inputs currently on the page. Defaults to the
+#'   value configured with [snap_enable()] (`TRUE`).
+#' @param values Capture tracked values and run the save hooks? `FALSE`
+#'   captures inputs only.
+#' @param scope `"root"` (the default) captures the whole app with full ids,
+#'   even when called inside a module; `"module"` keeps only ids under the
+#'   calling module's namespace (still as full ids).
+#' @param meta A named list of free-form metadata stored in the snapshot.
+#'
+#' @returns A snapshot object of class `shinysnap`.
+#'
+#' @examples
+#' if (interactive()) {
+#'   library(shiny)
+#'
+#'   server <- function(input, output, session) {
+#'     observeEvent(input$show, {
+#'       print(snap_take())
+#'     })
+#'   }
+#' }
+#' @export
+snap_take <- function(session = shiny::getDefaultReactiveDomain(), ...,
+                      include = NULL, exclude = NULL, live_only = NULL,
+                      values = TRUE, scope = c("root", "module"),
+                      meta = list()) {
+  if (...length() > 0L) {
+    snap_abort("Arguments of `snap_take()` after `session` must be named.")
+  }
+  session <- require_session(session, "snap_take")
+  scope <- match.arg(scope)
+  include <- check_patterns(include, "include")
+  exclude <- check_patterns(exclude, "exclude")
+  if (!is.list(meta) || (length(meta) > 0L && !has_full_names(meta))) {
+    snap_abort("`meta` must be a named list.")
+  }
+  ctrl <- snap_controller(session)
+  root <- session$rootScope()
+  live_only <- if (is.null(live_only)) ctrl$live_only else isTRUE(live_only)
+
+  all <- shiny::isolate(shiny::reactiveValuesToList(root$input))
+  ids <- names(all)
+  if (is.null(ids)) ids <- character()
+  keep <- !startsWith(ids, ".")
+  if (scope == "module" && is_module_session(session)) {
+    keep <- keep & startsWith(ids, session_prefix(session))
+  }
+
+  inv <- ctrl$inventory()
+  if (live_only) {
+    if (is.null(inv)) {
+      ctrl$note("the client has not reported which inputs are on the page yet; capturing all inputs")
+    } else {
+      stale <- ids[keep & !(ids %in% names(inv))]
+      if (length(stale)) {
+        ctrl$note("dropping inputs that are not on the page: ", quote_ids(stale))
+      }
+      keep <- keep & ids %in% names(inv)
+    }
+  }
+  all <- all[keep]
+  ids <- ids[keep]
+
+  # File inputs cannot be pushed back into a browser: uploaded files become
+  # attachments, and an empty file input (whose value is NULL) is skipped. The
+  # inventory identifies file inputs by binding; the value shape is the
+  # fallback when the client has not reported.
+  is_file <- vapply(all, is_file_input_value, logical(1))
+  if (!is.null(inv)) {
+    is_file <- is_file | (inv[ids] %in% "shiny.fileInputBinding")
+  }
+  attachments <- lapply(all[is_file], function(v) {
+    if (!is_file_input_value(v)) {
+      return(NULL)
+    }
+    list(name = v$name, size = v$size, type = v$type, datapath = v$datapath)
+  })
+  attachments <- attachments[!vapply(attachments, is.null, logical(1))]
+  all <- all[!is_file]
+  ids <- ids[!is_file]
+
+  impl <- .subset2(root$input, "impl")
+  keep <- rep(TRUE, length(ids))
+  for (i in seq_along(ids)) {
+    v <- all[[i]]
+    if (is_action_button_value(v)) {
+      keep[i] <- FALSE
+      next
+    }
+    fun <- impl$getMeta(ids[i], "shiny.serializer")
+    if (is.function(fun)) {
+      v <- fun(v, NULL)
+      if (identical(attr(v, "serializable", exact = TRUE), FALSE)) {
+        keep[i] <- FALSE
+        next
+      }
+      all[i] <- list(v)
+    }
+  }
+  keep <- keep & select_ids(ids, ctrl, include, exclude)
+  dropped <- ids[!keep]
+  if (length(dropped)) {
+    ctrl$note("not capturing: ", quote_ids(dropped))
+  }
+  all <- all[keep]
+  ids <- ids[keep]
+
+  ord <- order(ids, method = "radix")
+  inputs <- all[ord]
+  ids <- ids[ord]
+  bindings <- if (is.null(inv)) character() else inv[intersect(ids, names(inv))]
+
+  vals <- list()
+  if (isTRUE(values)) {
+    env <- new.env(parent = emptyenv())
+    for (nm in names(ctrl$tracked)) {
+      tracked <- ctrl$tracked[[nm]]
+      lst <- shiny::isolate(shiny::reactiveValuesToList(tracked$values))
+      if (!is.null(tracked$fields)) {
+        lst <- lst[intersect(tracked$fields, names(lst))]
+      }
+      assign(nm, lst, envir = env)
+    }
+    ctrl$on_save$invoke(list(inputs = inputs, values = env))
+    nms <- sort(ls(env, all.names = TRUE), method = "radix")
+    vals <- mget(nms, envir = env)
+  }
+
+  new_snapshot(
+    inputs = inputs,
+    values = vals,
+    bindings = bindings,
+    attachments = attachments,
+    meta = meta,
+    app = list(name = ctrl$app, version = ctrl$version),
+    created = iso_now(),
+    producer = snap_producer()
+  )
+}

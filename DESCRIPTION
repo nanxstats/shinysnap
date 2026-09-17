@@ -18,13 +18,19 @@ URL: https://nanx.me/shinysnap/, https://github.com/nanxstats/shinysnap
 BugReports: https://github.com/nanxstats/shinysnap/issues
 Encoding: UTF-8
 Imports:
+    htmltools,
     jsonlite,
+    R6,
+    shiny (>= 1.8.0),
     utils,
     zmij
 Suggests:
+    chromote,
     knitr,
     rmarkdown,
-    testthat (>= 3.0.0)
+    shinytest2,
+    testthat (>= 3.0.0),
+    withr
 VignetteBuilder: knitr
 Config/testthat/edition: 3
 Roxygen: list(markdown = TRUE)

@@ -252,18 +252,80 @@ test_that("snap_serialize accepts a list or JSON text", {
   )
 })
 
-test_that("attachments are written only when present", {
+test_that("attachments are dropped from JSON with a message", {
   snap <- new_snapshot(
     inputs = list(n = 1L),
     attachments = list(upload = list(name = "data.csv", size = 1234L, type = "text/csv")),
     created = "2026-09-16T18:22:03Z",
     producer = snap_producer()
   )
-  txt <- snap_serialize(snap)
-  expect_match(txt, "\"attachments\": {", fixed = TRUE)
-  expect_identical(snap_unserialize(txt), snap)
+  expect_message(txt <- snap_serialize(snap), "`upload`", fixed = TRUE)
+  expect_false(grepl("attachments", txt, fixed = TRUE))
+  back <- snap_unserialize(txt)
+  expect_identical(back$attachments, list())
+  back$attachments <- snap$attachments
+  expect_identical(back, snap)
+  ctx <- codec_ctx(keep_attachments = TRUE)
+  ir <- encode_snapshot(snap, ctx)
+  expect_identical(names(ir$attachments), "upload")
 })
 
 test_that("a malformed app field is rejected", {
   expect_error(snap_unserialize("{\"format\": 1, \"app\": [1]}"), "\"app\"", class = "shinysnap_format_error")
+})
+
+test_that("snap_write() and snap_read() round-trip JSON files exactly", {
+  snap <- full_snapshot()
+  path <- withr::local_tempfile(fileext = ".json")
+  expect_identical(snap_write(snap, path), path)
+  expect_identical(snap_read(path), snap)
+  expect_identical(snap_read(path, format = "json"), snap)
+  bytes <- readBin(path, "raw", file.size(path))
+  expect_identical(bytes, charToRaw(snap_serialize(snap)))
+  path2 <- withr::local_tempfile(fileext = ".json")
+  snap_write(snap, path2)
+  expect_identical(readBin(path2, "raw", file.size(path2)), bytes)
+
+  compact <- withr::local_tempfile(fileext = ".json")
+  snap_write(snap, compact, pretty = FALSE)
+  expect_identical(length(readLines(compact, warn = FALSE)), 1L)
+  expect_identical(snap_read(compact), snap)
+
+  noext <- withr::local_tempfile()
+  snap_write(snap, noext, format = "json")
+  expect_identical(snap_read(noext, format = "json"), snap)
+  expect_error(snap_write(snap, noext), "extension", class = "shinysnap_error")
+  expect_error(snap_read(noext), "extension", class = "shinysnap_error")
+})
+
+test_that("snap_read() copes with byte-order marks, CRLF, and non-ASCII", {
+  snap <- new_snapshot(inputs = list(name = "café", text = "a\nb"), created = "2026-01-01T00:00:00Z")
+  path <- withr::local_tempfile(fileext = ".json")
+  txt <- snap_serialize(snap)
+  raw <- c(as.raw(c(0xEF, 0xBB, 0xBF)), charToRaw(gsub("\n", "\r\n", enc2utf8(txt), fixed = TRUE)))
+  writeBin(raw, path)
+  back <- snap_read(path)
+  expect_identical(back$inputs, snap$inputs)
+  writeBin(as.raw(c(0x7B, 0xFF, 0x7D)), path)
+  expect_error(snap_read(path), "UTF-8", class = "shinysnap_format_error")
+  expect_error(snap_read(file.path(tempdir(), "missing-file.json")), "not found", class = "shinysnap_format_error")
+  expect_error(snap_read(1), "`path`", class = "shinysnap_error")
+  expect_error(snap_write(snap, c("a", "b")), "`path`", class = "shinysnap_error")
+})
+
+test_that("the rds format works but requires trust to read", {
+  snap <- full_snapshot()
+  path <- withr::local_tempfile(fileext = ".rds")
+  snap_write(snap, path)
+  expect_error(snap_read(path), "trust = TRUE", class = "shinysnap_trust_error")
+  expect_identical(snap_read(path, trust = TRUE), snap)
+  expect_identical(snap_read(path, format = "rds", trust = TRUE), snap)
+  bare <- new_snapshot(inputs = list(n = 1L))
+  snap_write(bare, path)
+  back <- snap_read(path, trust = TRUE)
+  expect_identical(back$producer, snap_producer())
+  expect_true(is_string(back$created))
+  saveRDS(list(not = "a snapshot"), path)
+  expect_error(snap_read(path, trust = TRUE), class = "shinysnap_invalid")
+  expect_error(snap_write(snap, withr::local_tempfile(fileext = ".zip")), "extension")
 })

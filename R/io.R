@@ -91,7 +91,17 @@ encode_snapshot <- function(x, ctx) {
     bindings = as_object(as.list(x$bindings))
   )
   if (length(x$attachments)) {
-    root$attachments <- encode_section(x$attachments, "attachments", ctx)
+    if (isTRUE(ctx$keep_attachments)) {
+      root$attachments <- encode_section(x$attachments, "attachments", ctx)
+    } else {
+      message(sprintf(
+        paste0(
+          "shinysnap: %d uploaded file(s) (%s) are not included in the JSON ",
+          "file; write a zip bundle to keep uploaded files."
+        ),
+        length(x$attachments), quote_ids(names(x$attachments))
+      ))
+    }
   }
   root$meta <- encode_section(x$meta, "meta", ctx)
   root
@@ -236,4 +246,131 @@ decode_section <- function(x, name, ctx) {
   })
   names(out) <- nms
   out
+}
+
+#' Write a snapshot to a file and read it back
+#'
+#' `snap_write()` saves a snapshot; `snap_read()` loads one. The canonical
+#' format is JSON (see [snap_serialize()]): plain text, readable, diffable,
+#' and safe to open. The `"rds"` format stores the R object with `saveRDS()`;
+#' it is neither readable nor safe across versions, and reading it requires
+#' `trust = TRUE` because unserializing a file runs arbitrary code paths.
+#'
+#' @param x A snapshot object.
+#' @param path The file path.
+#' @param format `"auto"` picks the format from the extension (`.json` or
+#'   `.rds`); otherwise the format to use regardless of the extension.
+#' @param pretty Pretty-print JSON (the default) or write one compact line.
+#' @param ... Passed on to [snap_serialize()] (`unsupported`, `verbose`).
+#' @param trust Decode embedded serialized R objects and allow the `"rds"`
+#'   format? Only set this to `TRUE` for files from a source you trust.
+#' @param unknown_types What to do with a `"$type"` the reader does not know:
+#'   `"error"` (the default) or `"keep"` to keep the raw parsed value.
+#'
+#' @returns `snap_write()` returns `path` invisibly; `snap_read()` returns a
+#'   snapshot object.
+#'
+#' @examples
+#' snap <- snap_unserialize('{"format": 1, "inputs": {"n": 100, "rate": 0.025}}')
+#' path <- tempfile(fileext = ".json")
+#' snap_write(snap, path)
+#' cat(readLines(path), sep = "\n")
+#' identical(snap_inputs(snap_read(path)), snap_inputs(snap))
+#' @export
+snap_write <- function(x, path, format = c("auto", "json", "rds"), pretty = TRUE, ...) {
+  if (!is_string(path)) {
+    snap_abort("`path` must be a single file path.")
+  }
+  format <- match.arg(format)
+  if (format == "auto") format <- format_from_path(path)
+  x <- as_snapshot(x)
+  switch(format,
+    json = write_utf8(snap_serialize(x, pretty = pretty, ...), path),
+    rds = {
+      x$producer <- snap_producer()
+      x$created <- x$created %||% iso_now()
+      saveRDS(x, path)
+    }
+  )
+  invisible(path)
+}
+
+#' @rdname snap_write
+#' @export
+snap_read <- function(path, format = c("auto", "json", "rds"), trust = FALSE,
+                      unknown_types = c("error", "keep"), ...) {
+  if (!is_string(path)) {
+    snap_abort("`path` must be a single file path.")
+  }
+  if (!file.exists(path)) {
+    snap_abort(sprintf("File not found: `%s`.", path), class = "shinysnap_format_error")
+  }
+  format <- match.arg(format)
+  unknown_types <- match.arg(unknown_types)
+  if (format == "auto") format <- format_from_path(path)
+  switch(format,
+    json = snap_unserialize(
+      read_utf8(path),
+      trust = trust, unknown_types = unknown_types
+    ),
+    rds = {
+      if (!isTRUE(trust)) {
+        snap_abort(
+          paste0(
+            "Reading an .rds snapshot unserializes arbitrary R objects; pass ",
+            "`trust = TRUE` if you trust the source of this file."
+          ),
+          class = "shinysnap_trust_error"
+        )
+      }
+      as_snapshot(readRDS(path))
+    }
+  )
+}
+
+#' Pick the format from a file extension
+#'
+#' @noRd
+format_from_path <- function(path) {
+  ext <- tolower(sub("^.*\\.([A-Za-z0-9]+)$", "\\1", basename(path)))
+  if (identical(ext, tolower(basename(path)))) ext <- ""
+  switch(ext,
+    json = "json",
+    rds = "rds",
+    snap_abort(
+      sprintf(
+        "Cannot infer the format of `%s` from its extension; pass `format`.",
+        path
+      )
+    )
+  )
+}
+
+#' Write a string as UTF-8 bytes, without newline conversion
+#'
+#' @noRd
+write_utf8 <- function(text, path) {
+  con <- file(path, open = "wb")
+  on.exit(close(con))
+  writeBin(charToRaw(enc2utf8(text)), con)
+  invisible(path)
+}
+
+#' Read a whole file as one UTF-8 string, dropping a byte-order mark
+#'
+#' @noRd
+read_utf8 <- function(path) {
+  size <- file.info(path)$size
+  raw <- readBin(path, what = "raw", n = size)
+  bom <- as.raw(c(0xEF, 0xBB, 0xBF))
+  if (length(raw) >= 3L && identical(raw[1:3], bom)) raw <- raw[-(1:3)]
+  txt <- rawToChar(raw)
+  Encoding(txt) <- "UTF-8"
+  if (!validUTF8(txt)) {
+    snap_abort(
+      sprintf("`%s` is not valid UTF-8.", path),
+      class = "shinysnap_format_error"
+    )
+  }
+  txt
 }
