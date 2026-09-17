@@ -44,7 +44,7 @@ if (( PATTERN_COLORS < 500 )); then
     exit 1
 fi
 
-# Clip the rendered field to the sticker and add a bold poppy-red border.
+# Clip the rendered field to the sticker and add a border.
 magick "$PATTERN_PNG" \
     -resize 553x640! \
     \( -size 553x640 xc:black \

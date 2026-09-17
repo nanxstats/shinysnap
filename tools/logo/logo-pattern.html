@@ -14,7 +14,7 @@
       height: 100%;
       margin: 0;
       overflow: hidden;
-      background: #f7f8f5;
+      background: #fdfdfd;
     }
 
     canvas {
@@ -34,91 +34,91 @@
 
     const ART_WIDTH = 1106;
     const ART_HEIGHT = 1280;
-    const PAPER = "#f7f8f5";
+    const PAPER = "#fdfdfd";
 
     const PLANES = [
       {
-        color: "#718894",
-        opacity: 142,
-        underpaint: 50,
+        color: "#879da4",
+        opacity: 136,
+        underpaint: 46,
         bleed: 0.16,
         texture: 0.62,
         angle: 18,
         points: [
-          [-140, -120], [450, -120], [630, 70], [520, 320],
-          [230, 470], [-140, 360]
+          [1240, -120], [610, -120], [430, 60], [565, 295],
+          [910, 420], [1240, 310]
         ]
       },
       {
-        color: "#b94732",
-        opacity: 166,
-        underpaint: 68,
+        color: "#c47e64",
+        opacity: 150,
+        underpaint: 54,
         bleed: 0.14,
         texture: 0.58,
         angle: 154,
         points: [
-          [390, -100], [1250, -100], [1250, 500], [1010, 560],
-          [790, 400], [620, 250]
+          [640, -100], [-140, -100], [-140, 455], [160, 515],
+          [390, 345], [510, 150]
         ]
       },
       {
-        color: "#6b7e4c",
-        opacity: 158,
-        underpaint: 64,
+        color: "#94a18b",
+        opacity: 136,
+        underpaint: 46,
         bleed: 0.18,
         texture: 0.66,
         angle: 42,
         points: [
-          [-160, 300], [180, 350], [370, 500], [300, 690],
-          [90, 870], [-160, 740]
+          [1250, 330], [960, 390], [790, 535], [850, 730],
+          [1080, 895], [1250, 765]
         ]
       },
       {
-        color: "#326b62",
-        opacity: 162,
-        underpaint: 66,
+        color: "#7fa49a",
+        opacity: 136,
+        underpaint: 46,
         bleed: 0.17,
         texture: 0.64,
         angle: 208,
         points: [
-          [1240, 350], [1030, 370], [800, 500], [820, 720],
-          [1020, 870], [1240, 790]
+          [-140, 375], [110, 410], [340, 535], [300, 735],
+          [60, 840], [-140, 755]
         ]
       },
       {
-        color: "#b9684d",
-        opacity: 158,
-        underpaint: 64,
+        color: "#c78e77",
+        opacity: 150,
+        underpaint: 54,
         bleed: 0.16,
         texture: 0.61,
         angle: 322,
         points: [
-          [-140, 700], [170, 730], [460, 850], [610, 1100],
-          [420, 1370], [-140, 1370]
+          [1240, 735], [930, 790], [700, 900], [535, 1140],
+          [710, 1370], [1240, 1370]
         ]
       },
       {
-        color: "#4e6660",
-        opacity: 164,
-        underpaint: 68,
+        color: "#929faf",
+        opacity: 136,
+        underpaint: 46,
         bleed: 0.15,
         texture: 0.6,
         angle: 236,
         points: [
-          [470, 850], [780, 700], [1030, 820], [1240, 790],
-          [1240, 1370], [420, 1370]
+          [670, 900], [390, 760], [90, 835], [-140, 805],
+          [-140, 1370], [710, 1370]
         ]
       },
       {
-        color: "#edf2ef",
+        color: "#f8faf9",
         opacity: 118,
         underpaint: 42,
         bleed: 0.1,
         texture: 0.5,
         angle: 8,
         points: [
-          [160, 500], [370, 410], [685, 420], [920, 520], [1030, 650],
-          [875, 790], [640, 880], [340, 850], [100, 720], [80, 610]
+          [945, 510], [750, 440], [440, 420], [220, 500], [100, 625],
+          [250, 775], [485, 850], [790, 820], [1000, 720], [1020, 620]
         ]
       }
     ];
@@ -132,7 +132,7 @@
       randomSeed(73021 + index * 101);
       brush.fill(plane.color, plane.opacity);
       brush.fillBleed(plane.bleed, "out", plane.angle);
-      brush.fillTexture(plane.texture, 0.28, true);
+      brush.fillTexture(plane.texture, 0.18, true);
       brush.polygon(plane.points);
       brush.noFill();
     }
