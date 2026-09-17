@@ -1,4 +1,4 @@
-# shinysnap
+# shinysnap <a href="https://nanx.me/shinysnap/"><img src="man/figures/logo.png" align="right" height="139" alt="shinysnap website" /></a>
 
 <!-- badges: start -->
 [![R-CMD-check](https://github.com/nanxstats/shinysnap/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/nanxstats/shinysnap/actions/workflows/R-CMD-check.yaml)
