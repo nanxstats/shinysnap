@@ -119,7 +119,7 @@ cat(snap_serialize(snap))
 #> {
 #>   "format": 1,
 #>   "app": {"name": "myapp", "version": "2.4.1"},
-#>   "created": "2026-09-17T06:12:16Z",
+#>   "created": "2026-09-17T22:38:47Z",
 #>   "producer": {"shinysnap": "0.1.0", "shiny": "1.14.0", "r": "4.6.1"},
 #>   "inputs": {
 #>     "dates": {"$type": "Date", "value": ["2024-01-01", "2024-03-01"]},
