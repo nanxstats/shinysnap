@@ -5,7 +5,7 @@
 <meta charset="utf-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<title>shinysnap • shinysnap</title>
+<title>Get started with shinysnap • shinysnap</title>
 <!-- mathjax math --><script src="https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-mml-chtml.js" integrity="sha256-MASABpB4tYktI2Oitl4t+78w/lyA+D7b/s9GEP0JOGI=" crossorigin="anonymous"></script><script>
   window.MathJax = {
     chtml: {
@@ -16,7 +16,7 @@
 <link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet">
 <script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
-<script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="shinysnap">
+<script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Get started with shinysnap">
 </head>
 <body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
@@ -37,6 +37,16 @@
       <ul class="navbar-nav me-auto">
 <li class="active nav-item"><a class="nav-link" href="../articles/shinysnap.html">Get started</a></li>
 <li class="nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
+<li class="nav-item dropdown">
+  <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
+<li><a class="dropdown-item" href="../articles/dynamic-ui.html">Restoring dynamic UI</a></li>
+    <li><a class="dropdown-item" href="../articles/custom-inputs.html">Restoring custom inputs</a></li>
+    <li><a class="dropdown-item" href="../articles/migrating-from-bookmarks.html">Snapshots and bookmarks</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><a class="dropdown-item" href="../articles/index.html">More articles...</a></li>
+  </ul>
+</li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul>
 <ul class="navbar-nav">
@@ -57,7 +67,7 @@
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
 
-      <h1>shinysnap</h1>
+      <h1>Get started with shinysnap</h1>
             
       
       <small class="dont-index">Source: <a href="https://github.com/nanxstats/shinysnap/blob/main/vignettes/shinysnap.Rmd" class="external-link"><code>vignettes/shinysnap.Rmd</code></a></small>
@@ -66,9 +76,217 @@
 
     
     
+<p>shinysnap lets users of a Shiny app save their work and pick it up
+later: it takes a <em>snapshot</em> of the running app (the input values
+plus any server-side values you register), writes it to a plain JSON
+file that can be shared and kept under version control, and restores it
+into another session without a page reload and without
+<code><a href="https://rdrr.io/pkg/shiny/man/enableBookmarking.html" class="external-link">shiny::enableBookmarking()</a></code>.</p>
+<p>The word “snapshot” is used in the sense of a virtual machine or file
+system snapshot: a saved state you can write to a file, share, and
+restore later. It has nothing to do with snapshot <em>testing</em>
+(<code>expect_snapshot</code> in testthat and shinytest2) or with
+screenshots.</p>
+<div class="section level2">
+<h2 id="a-minimal-app">A minimal app<a class="anchor" aria-label="anchor" href="#a-minimal-app"></a>
+</h2>
+<p>Two UI helpers and two server calls are all it takes:</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://nanx.me/shinysnap/">shinysnap</a></span><span class="op">)</span></span></code></pre></div>
-  </main>
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://shiny.posit.co/" class="external-link">shiny</a></span><span class="op">)</span></span>
+<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://nanx.me/shinysnap/">shinysnap</a></span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">ui</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/fluidPage.html" class="external-link">fluidPage</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/sliderInput.html" class="external-link">sliderInput</a></span><span class="op">(</span><span class="st">"n"</span>, <span class="st">"Sample size"</span>, <span class="fl">10</span>, <span class="fl">500</span>, <span class="fl">100</span><span class="op">)</span>,</span>
+<span>  <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/selectInput.html" class="external-link">selectInput</a></span><span class="op">(</span><span class="st">"model"</span>, <span class="st">"Model"</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"simple"</span>, <span class="st">"complex"</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>  <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/htmlOutput.html" class="external-link">uiOutput</a></span><span class="op">(</span><span class="st">"model_inputs"</span><span class="op">)</span>,</span>
+<span>  <span class="fu"><a href="../reference/snap_download_button.html">snap_download_button</a></span><span class="op">(</span><span class="st">"save"</span><span class="op">)</span>,</span>
+<span>  <span class="fu"><a href="../reference/snap_file_input.html">snap_file_input</a></span><span class="op">(</span><span class="st">"restore"</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">server</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">input</span>, <span class="va">output</span>, <span class="va">session</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="fu"><a href="../reference/snap_enable.html">snap_enable</a></span><span class="op">(</span>app <span class="op">=</span> <span class="st">"demo"</span>, version <span class="op">=</span> <span class="st">"1.0.0"</span><span class="op">)</span></span>
+<span></span>
+<span>  <span class="va">output</span><span class="op">$</span><span class="va">model_inputs</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/renderUI.html" class="external-link">renderUI</a></span><span class="op">(</span><span class="op">{</span></span>
+<span>    <span class="kw">if</span> <span class="op">(</span><span class="va">input</span><span class="op">$</span><span class="va">model</span> <span class="op">==</span> <span class="st">"simple"</span><span class="op">)</span> <span class="op">{</span></span>
+<span>      <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/numericInput.html" class="external-link">numericInput</a></span><span class="op">(</span><span class="st">"rate"</span>, <span class="st">"Rate"</span>, <span class="fl">0.05</span><span class="op">)</span></span>
+<span>    <span class="op">}</span> <span class="kw">else</span> <span class="op">{</span></span>
+<span>      <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/sliderInput.html" class="external-link">sliderInput</a></span><span class="op">(</span><span class="st">"k"</span>, <span class="st">"k"</span>, <span class="fl">1</span>, <span class="fl">10</span>, <span class="fl">3</span><span class="op">)</span></span>
+<span>    <span class="op">}</span></span>
+<span>  <span class="op">}</span><span class="op">)</span></span>
+<span></span>
+<span>  <span class="fu"><a href="../reference/snap_download_button.html">snap_download_handler</a></span><span class="op">(</span><span class="st">"save"</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="../reference/snap_file_input.html">snap_file_restore</a></span><span class="op">(</span><span class="st">"restore"</span><span class="op">)</span></span>
+<span><span class="op">}</span></span>
+<span></span>
+<span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/shinyApp.html" class="external-link">shinyApp</a></span><span class="op">(</span><span class="va">ui</span>, <span class="va">server</span><span class="op">)</span></span></code></pre></div>
+<p>Clicking <strong>Save state</strong> downloads a <code>.json</code>
+file with every input that is currently on the page. Uploading that file
+later, in any session, puts the app back into that state: the select is
+applied first, the dynamic UI it controls re-renders, and the inputs
+inside it receive their values as soon as they exist. You never write
+timing code.</p>
+</div>
+<div class="section level2">
+<h2 id="the-file">The file<a class="anchor" aria-label="anchor" href="#the-file"></a>
+</h2>
+<p>Snapshot files are meant to be read by people. Numbers are written
+with the fewest digits that read back to the same value, and everything
+JSON cannot express directly (dates, matrices, <code>NA</code>, the type
+of an empty vector) uses a small typed wrapper. This is what a file
+looks like:</p>
+<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://nanx.me/shinysnap/">shinysnap</a></span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">snap</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
+<span>  app <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>name <span class="op">=</span> <span class="st">"demo"</span>, version <span class="op">=</span> <span class="st">"1.0.0"</span><span class="op">)</span>,</span>
+<span>  created <span class="op">=</span> <span class="st">"2026-09-16T18:22:03Z"</span>,</span>
+<span>  inputs <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
+<span>    dates <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/as.Date.html" class="external-link">as.Date</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"2024-01-01"</span>, <span class="st">"2024-03-01"</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>    model <span class="op">=</span> <span class="st">"complex"</span>,</span>
+<span>    n <span class="op">=</span> <span class="fl">100L</span>,</span>
+<span>    rate <span class="op">=</span> <span class="fl">0.025</span>,</span>
+<span>    weights <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.5</span>, <span class="fl">0.75</span><span class="op">)</span></span>
+<span>  <span class="op">)</span>,</span>
+<span>  values <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>prefs <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>digits <span class="op">=</span> <span class="fl">3L</span>, scientific <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="../reference/snap_serialize.html">snap_serialize</a></span><span class="op">(</span><span class="va">snap</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="co">#&gt; {</span></span>
+<span><span class="co">#&gt;   "format": 1,</span></span>
+<span><span class="co">#&gt;   "app": {"name": "demo", "version": "1.0.0"},</span></span>
+<span><span class="co">#&gt;   "created": "2026-09-16T18:22:03Z",</span></span>
+<span><span class="co">#&gt;   "producer": {"shinysnap": "0.1.0", "shiny": "1.14.0", "r": "4.6.1"},</span></span>
+<span><span class="co">#&gt;   "inputs": {</span></span>
+<span><span class="co">#&gt;     "dates": {"$type": "Date", "value": ["2024-01-01", "2024-03-01"]},</span></span>
+<span><span class="co">#&gt;     "model": "complex",</span></span>
+<span><span class="co">#&gt;     "n": 100,</span></span>
+<span><span class="co">#&gt;     "rate": 0.025,</span></span>
+<span><span class="co">#&gt;     "weights": [0.5, 0.75]</span></span>
+<span><span class="co">#&gt;   },</span></span>
+<span><span class="co">#&gt;   "values": {"prefs": {"digits": 3, "scientific": false}},</span></span>
+<span><span class="co">#&gt;   "bindings": {},</span></span>
+<span><span class="co">#&gt;   "meta": {}</span></span>
+<span><span class="co">#&gt; }</span></span></code></pre></div>
+<p>Reading it back gives the same R values, so hand-editing a file and
+restoring it is a supported workflow:</p>
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">text</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/snap_serialize.html">snap_serialize</a></span><span class="op">(</span><span class="va">snap</span><span class="op">)</span></span>
+<span><span class="va">back</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/snap_serialize.html">snap_unserialize</a></span><span class="op">(</span><span class="va">text</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/str.html" class="external-link">str</a></span><span class="op">(</span><span class="fu"><a href="../reference/snap_inputs.html">snap_inputs</a></span><span class="op">(</span><span class="va">back</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="co">#&gt; List of 5</span></span>
+<span><span class="co">#&gt;  $ dates  : Date[1:2], format: "2024-01-01" "2024-03-01"</span></span>
+<span><span class="co">#&gt;  $ model  : chr "complex"</span></span>
+<span><span class="co">#&gt;  $ n      : int 100</span></span>
+<span><span class="co">#&gt;  $ rate   : num 0.025</span></span>
+<span><span class="co">#&gt;  $ weights: num [1:2] 0.5 0.75</span></span></code></pre></div>
+</div>
+<div class="section level2">
+<h2 id="what-gets-saved">What gets saved<a class="anchor" aria-label="anchor" href="#what-gets-saved"></a>
+</h2>
+<ul>
+<li>
+<strong>Inputs</strong> that are on the page, by fully namespaced
+id. Values of inputs whose dynamic UI has been removed are dropped, so
+the file describes the UI as the user saw it. Action buttons, passwords,
+and file uploads are never stored as input values (uploads can travel in
+a zip bundle, see <code><a href="../reference/snap_write.html">snap_write()</a></code>).</li>
+<li>
+<strong>Values</strong> from the <code>reactiveValues</code> you
+register with <code><a href="../reference/snap_track.html">snap_track()</a></code>, plus whatever your
+<code><a href="../reference/snap_on_save.html">snap_on_save()</a></code> hooks add.</li>
+<li>The app name and version, so a restore can refuse files from another
+app and migrate files from an older version.</li>
+</ul>
+</div>
+<div class="section level2">
+<h2 id="the-before-and-after">The before and after<a class="anchor" aria-label="anchor" href="#the-before-and-after"></a>
+</h2>
+<p>Apps that save state by hand usually end up with something like this:
+<code>reactiveValuesToList(input)</code> into an <code>.rds</code> file,
+and on upload a loop of <code>session$sendInputMessage()</code> calls, a
+special case for matrix inputs, and, because inputs inside
+<code><a href="https://rdrr.io/pkg/shiny/man/renderUI.html" class="external-link">renderUI()</a></code> do not exist yet when the first messages are
+sent, staggered delays.</p>
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Before: a hand-rolled restore (abridged)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/observeEvent.html" class="external-link">observeEvent</a></span><span class="op">(</span><span class="va">input</span><span class="op">$</span><span class="va">restore_file</span>, <span class="op">{</span></span>
+<span>  <span class="va">saved</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/readRDS.html" class="external-link">readRDS</a></span><span class="op">(</span><span class="va">input</span><span class="op">$</span><span class="va">restore_file</span><span class="op">$</span><span class="va">datapath</span><span class="op">)</span></span>
+<span>  <span class="va">is_matrix</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">vapply</a></span><span class="op">(</span><span class="va">saved</span><span class="op">$</span><span class="va">inputs</span>, <span class="va">is.matrix</span>, <span class="fu"><a href="https://rdrr.io/r/base/logical.html" class="external-link">logical</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span><span class="op">)</span></span>
+<span>  <span class="kw">for</span> <span class="op">(</span><span class="va">id</span> <span class="kw">in</span> <span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">saved</span><span class="op">$</span><span class="va">inputs</span><span class="op">)</span><span class="op">[</span><span class="op">!</span><span class="va">is_matrix</span><span class="op">]</span><span class="op">)</span> <span class="op">{</span></span>
+<span>    <span class="va">session</span><span class="op">$</span><span class="fu">sendInputMessage</span><span class="op">(</span><span class="va">id</span>, <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>value <span class="op">=</span> <span class="va">saved</span><span class="op">$</span><span class="va">inputs</span><span class="op">[[</span><span class="va">id</span><span class="op">]</span><span class="op">]</span><span class="op">)</span><span class="op">)</span></span>
+<span>  <span class="op">}</span></span>
+<span>  <span class="kw">for</span> <span class="op">(</span><span class="va">id</span> <span class="kw">in</span> <span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">saved</span><span class="op">$</span><span class="va">inputs</span><span class="op">)</span><span class="op">[</span><span class="va">is_matrix</span><span class="op">]</span><span class="op">)</span> <span class="op">{</span></span>
+<span>    <span class="fu">updateMatrixInput</span><span class="op">(</span><span class="va">session</span>, <span class="va">id</span>, <span class="va">saved</span><span class="op">$</span><span class="va">inputs</span><span class="op">[[</span><span class="va">id</span><span class="op">]</span><span class="op">]</span><span class="op">)</span></span>
+<span>  <span class="op">}</span></span>
+<span>  <span class="va">prefs</span><span class="op">$</span><span class="va">digits</span> <span class="op">&lt;-</span> <span class="va">saved</span><span class="op">$</span><span class="va">prefs</span><span class="op">$</span><span class="va">digits</span></span>
+<span>  <span class="va">prefs</span><span class="op">$</span><span class="va">scientific</span> <span class="op">&lt;-</span> <span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/NULL.html" class="external-link">is.null</a></span><span class="op">(</span><span class="va">saved</span><span class="op">$</span><span class="va">prefs</span><span class="op">$</span><span class="va">scientific</span><span class="op">)</span><span class="op">)</span> <span class="cn">FALSE</span> <span class="kw">else</span> <span class="va">saved</span><span class="op">$</span><span class="va">prefs</span><span class="op">$</span><span class="va">scientific</span></span>
+<span>  <span class="co"># Inputs inside renderUI() do not exist yet: guess how long they take.</span></span>
+<span>  <span class="fu">shinyjs</span><span class="fu">::</span><span class="fu">delay</span><span class="op">(</span><span class="fl">500</span>, <span class="op">{</span></span>
+<span>    <span class="kw">for</span> <span class="op">(</span><span class="va">id</span> <span class="kw">in</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"detail_k"</span>, <span class="st">"detail_note"</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
+<span>      <span class="kw">if</span> <span class="op">(</span><span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/NULL.html" class="external-link">is.null</a></span><span class="op">(</span><span class="va">saved</span><span class="op">$</span><span class="va">inputs</span><span class="op">[[</span><span class="va">id</span><span class="op">]</span><span class="op">]</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
+<span>        <span class="va">session</span><span class="op">$</span><span class="fu">sendInputMessage</span><span class="op">(</span><span class="va">id</span>, <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>value <span class="op">=</span> <span class="va">saved</span><span class="op">$</span><span class="va">inputs</span><span class="op">[[</span><span class="va">id</span><span class="op">]</span><span class="op">]</span><span class="op">)</span><span class="op">)</span></span>
+<span>      <span class="op">}</span></span>
+<span>    <span class="op">}</span></span>
+<span>  <span class="op">}</span><span class="op">)</span></span>
+<span>  <span class="fu">shinyjs</span><span class="fu">::</span><span class="fu">delay</span><span class="op">(</span><span class="fl">1500</span>, <span class="op">{</span></span>
+<span>    <span class="co"># ... another wave for the inputs that appear after those ...</span></span>
+<span>  <span class="op">}</span><span class="op">)</span></span>
+<span><span class="op">}</span><span class="op">)</span></span></code></pre></div>
+<p>With shinysnap the same app needs no delays, no matrix special case,
+and no per-field fallbacks:</p>
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># After</span></span>
+<span><span class="fu"><a href="../reference/snap_enable.html">snap_enable</a></span><span class="op">(</span>app <span class="op">=</span> <span class="st">"myapp"</span>, version <span class="op">=</span> <span class="st">"2.4.0"</span>, exclude <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"^btn_"</span>, <span class="st">"^nav$"</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu"><a href="../reference/snap_track.html">snap_track</a></span><span class="op">(</span><span class="va">prefs</span><span class="op">)</span></span>
+<span><span class="fu"><a href="../reference/snap_track.html">snap_track</a></span><span class="op">(</span><span class="va">main_options</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="../reference/snap_download_button.html">snap_download_handler</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"btn_save_main"</span>, <span class="st">"btn_save_details"</span><span class="op">)</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="../reference/snap_file_input.html">snap_file_restore</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"btn_restore_main"</span>, <span class="st">"btn_restore_details"</span><span class="op">)</span>,</span>
+<span>  validate <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">snap</span><span class="op">)</span> <span class="op">{</span></span>
+<span>    <span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/NULL.html" class="external-link">is.null</a></span><span class="op">(</span><span class="va">snap</span><span class="op">$</span><span class="va">inputs</span><span class="op">$</span><span class="va">model</span><span class="op">)</span><span class="op">)</span> <span class="kw"><a href="https://rdrr.io/r/base/stop.html" class="external-link">stop</a></span><span class="op">(</span><span class="st">"This file was not saved by this app."</span><span class="op">)</span></span>
+<span>  <span class="op">}</span>,</span>
+<span>  migrate <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">snap</span>, <span class="va">from</span><span class="op">)</span> <span class="op">{</span></span>
+<span>    <span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/NULL.html" class="external-link">is.null</a></span><span class="op">(</span><span class="va">snap</span><span class="op">$</span><span class="va">values</span><span class="op">$</span><span class="va">prefs</span><span class="op">$</span><span class="va">scientific</span><span class="op">)</span><span class="op">)</span> <span class="va">snap</span><span class="op">$</span><span class="va">values</span><span class="op">$</span><span class="va">prefs</span><span class="op">$</span><span class="va">scientific</span> <span class="op">&lt;-</span> <span class="cn">FALSE</span></span>
+<span>    <span class="va">snap</span></span>
+<span>  <span class="op">}</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p>What disappeared and why:</p>
+<ul>
+<li>The delays: values for inputs that are not on the page yet wait in
+the browser and are applied the moment the input is bound, and dynamic
+UI that re-renders during the restore is built with the restored values
+already in place (see <code><a href="../articles/dynamic-ui.html">vignette("dynamic-ui")</a></code>).</li>
+<li>The matrix special case: the value of every input is turned into the
+message its binding understands by a <em>restorer</em>; shinysnap ships
+them for shiny, bslib, and shinyMatrix inputs (see
+<code><a href="../articles/custom-inputs.html">vignette("custom-inputs")</a></code>).</li>
+<li>The <code><a href="https://rdrr.io/r/base/NULL.html" class="external-link">is.null()</a></code> fallbacks: the <code>migrate</code> hook
+is the one place where defaults for values introduced after a file was
+saved belong.</li>
+<li>The <code>.rds</code> file: JSON is readable, diffable, and safe to
+open (see <code><a href="../articles/format-spec.html">vignette("format-spec")</a></code>).</li>
+</ul>
+</div>
+<div class="section level2">
+<h2 id="learn-more">Learn more<a class="anchor" aria-label="anchor" href="#learn-more"></a>
+</h2>
+<ul>
+<li>
+<code><a href="../articles/dynamic-ui.html">vignette("dynamic-ui")</a></code>: how a restore reaches inputs
+inside dynamic UI, and how to read the restore report.</li>
+<li>
+<code><a href="../articles/custom-inputs.html">vignette("custom-inputs")</a></code>: restoring inputs from other
+packages.</li>
+<li>
+<code><a href="../articles/format-spec.html">vignette("format-spec")</a></code>: the file format.</li>
+<li>
+<code><a href="../articles/migrating-from-bookmarks.html">vignette("migrating-from-bookmarks")</a></code>: shinysnap next to
+<code><a href="https://rdrr.io/pkg/shiny/man/enableBookmarking.html" class="external-link">enableBookmarking()</a></code>.</li>
+</ul>
+</div>
+  </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
+    </nav></aside>
 </div>
 
 

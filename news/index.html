@@ -23,6 +23,14 @@
     <div id="navbar" class="collapse navbar-collapse ms-3">
       <ul class="navbar-nav me-auto"><li class="nav-item"><a class="nav-link" href="../articles/shinysnap.html">Get started</a></li>
 <li class="nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
+<li class="nav-item dropdown">
+  <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/dynamic-ui.html">Restoring dynamic UI</a></li>
+    <li><a class="dropdown-item" href="../articles/custom-inputs.html">Restoring custom inputs</a></li>
+    <li><a class="dropdown-item" href="../articles/migrating-from-bookmarks.html">Snapshots and bookmarks</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><a class="dropdown-item" href="../articles/index.html">More articles...</a></li>
+  </ul></li>
 <li class="active nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="../search.json"></form></li>
@@ -41,9 +49,35 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.1.0" id="shinysnap-010">shinysnap 0.1.0<a class="anchor" aria-label="anchor" href="#shinysnap-010"></a></h2>
-<ul><li>Initial CRAN submission.</li>
+<p>Initial release.</p>
+<div class="section level3">
+<h3 id="snapshots-0-1-0">Snapshots<a class="anchor" aria-label="anchor" href="#snapshots-0-1-0"></a></h3>
+<ul><li>
+<code><a href="../reference/snap_take.html">snap_take()</a></code> captures the inputs that are on the page (as reported by the client script, so values of removed dynamic UI are dropped), the <code>reactiveValues</code> registered with <code><a href="../reference/snap_track.html">snap_track()</a></code>, and the values written by <code><a href="../reference/snap_on_save.html">snap_on_save()</a></code> hooks. Action buttons, passwords, values that shiny’s serializers mark as unserializable, ids excluded with <code><a href="https://rdrr.io/pkg/shiny/man/setBookmarkExclude.html" class="external-link">setBookmarkExclude()</a></code>, and the patterns given to <code><a href="../reference/snap_enable.html">snap_enable()</a></code>, <code><a href="../reference/snap_exclude.html">snap_exclude()</a></code>, and <code><a href="../reference/snap_exclude.html">snap_include()</a></code> are left out.</li>
+<li>The snapshot object is a plain list of class <code>shinysnap</code>, with <code><a href="../reference/snap_inputs.html">snap_inputs()</a></code>, <code><a href="../reference/snap_inputs.html">snap_values()</a></code>, <code><a href="../reference/snap_inputs.html">snap_meta()</a></code>, and <code><a href="../reference/snap_diff.html">snap_diff()</a></code>.</li>
 </ul></div>
-  </main></div>
+<div class="section level3">
+<h3 id="files-0-1-0">Files<a class="anchor" aria-label="anchor" href="#files-0-1-0"></a></h3>
+<ul><li>The canonical format is JSON: doubles written with the fewest digits that round-trip, typed wrappers for what JSON cannot say, deterministic layout. <code><a href="../reference/snap_serialize.html">snap_serialize()</a></code>, <code><a href="../reference/snap_serialize.html">snap_unserialize()</a></code>, <code><a href="../reference/snap_write.html">snap_write()</a></code>, and <code><a href="../reference/snap_write.html">snap_read()</a></code> convert; <code>snap_write(format = "zip")</code> writes a bundle that keeps uploaded files and, with <code>unsupported = "rds"</code>, opaque R objects. Bundles are validated before extraction; embedded objects and <code>.rds</code> files need <code>trust = TRUE</code>.</li>
+<li>
+<code><a href="../reference/snap_download_button.html">snap_download_button()</a></code>, <code><a href="../reference/snap_download_button.html">snap_download_handler()</a></code>, <code><a href="../reference/snap_file_input.html">snap_file_input()</a></code>, and <code><a href="../reference/snap_file_input.html">snap_file_restore()</a></code> replace the download and upload boilerplate.</li>
+</ul></div>
+<div class="section level3">
+<h3 id="restore-0-1-0">Restore<a class="anchor" aria-label="anchor" href="#restore-0-1-0"></a></h3>
+<ul><li>
+<code><a href="../reference/snap_restore.html">snap_restore()</a></code> restores a snapshot into the running session: tracked values are written back, <code><a href="../reference/snap_on_restore.html">snap_on_restore()</a></code> hooks run, and the input values are sent to the browser at once, where the client script applies each one as soon as its input is on the page. shiny’s <code><a href="https://rdrr.io/pkg/shiny/man/restoreInput.html" class="external-link">restoreInput()</a></code> mechanism is primed during the restore so dynamic UI is built with the restored values. A second restore cancels the first.</li>
+<li>The restore report lists every input as <code>applied</code>, <code>constructed</code>, <code>reapplied</code>, <code>missing</code>, <code>failed</code>, <code>mismatched</code>, or <code>skipped</code>; <code><a href="../reference/snap_on_restore.html">snap_on_restored()</a></code> hooks and <code><a href="../reference/snap_is_restoring.html">snap_is_restoring()</a></code> complete the server-side API.</li>
+<li>
+<code><a href="../reference/snap_restorer.html">snap_restorer()</a></code> registers how an input’s value becomes the message its binding understands, per binding name or per input id; built-in restorers cover shiny, bslib, and shinyMatrix inputs, and <code>window.shinysnap.registerAdapter()</code> is the JavaScript-side equivalent.</li>
+</ul></div>
+<div class="section level3">
+<h3 id="interop-0-1-0">Interop<a class="anchor" aria-label="anchor" href="#interop-0-1-0"></a></h3>
+<ul><li>
+<code><a href="../reference/snap_as_bookmark_url.html">snap_as_bookmark_url()</a></code> encodes a snapshot like URL bookmarking does, <code><a href="../reference/snap_as_bookmark_url.html">snap_as_test_inputs()</a></code> feeds <code><a href="https://rdrr.io/pkg/shiny/man/testServer.html" class="external-link">shiny::testServer()</a></code>, and <code><a href="../reference/snap_as_bookmark_url.html">snap_attachment()</a></code> returns the files kept in a bundle.</li>
+</ul></div>
+</div>
+  </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
+    </nav></aside></div>
 
 
     <footer><div class="pkgdown-footer-left">
