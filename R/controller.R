@@ -22,6 +22,12 @@ SnapController <- R6Class(
     on_restore = NULL,
     on_restored = NULL,
     dependency_injected = FALSE,
+    restorers = list(),
+    flags = NULL,
+    txn = NULL,
+    send = NULL,
+    result_observer = NULL,
+    cleanup_registered = FALSE,
     initialize = function(root) {
       self$root <- root
       self$app <- getOption("shinysnap.app")
@@ -29,6 +35,12 @@ SnapController <- R6Class(
       self$on_save <- new_callbacks()
       self$on_restore <- new_callbacks()
       self$on_restored <- new_callbacks()
+      self$flags <- shiny::reactiveValues(restoring = FALSE)
+      # Messages to the client go through a replaceable field so that tests
+      # can observe them; real sessions send custom messages from the root.
+      self$send <- function(type, message) {
+        root$sendCustomMessage(type, message)
+      }
     },
     configure = function(app = NULL, version = NULL, exclude = NULL,
                          include = NULL, live_only = TRUE,

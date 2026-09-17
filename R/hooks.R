@@ -91,3 +91,104 @@ scope_save_hook <- function(fn, session) {
     invisible(NULL)
   }
 }
+
+#' Register hooks that run around a restore
+#'
+#' `snap_on_restore()` registers a function that [snap_restore()] calls after
+#' the tracked values have been written back and before the input values are
+#' sent to the browser. `snap_on_restored()` registers a function that runs
+#' once the browser reports that the restore has settled. Both receive a
+#' `state` list with `inputs` (the named list of input values being restored),
+#' `values` (the `values` section of the file), `snapshot` (the whole
+#' snapshot), and `txn` (the transaction id); the `restored` hook also
+#' receives the restore report.
+#'
+#' Inside a module, the hooks see only the module's inputs and values, with
+#' the namespace prefix removed, and only the module's rows of the report.
+#'
+#' Errors raised by a hook abort the restore and reject its promise.
+#'
+#' @param fn A function taking `state` (and, for `snap_on_restored()`,
+#'   `report`).
+#' @param session The Shiny session. Defaults to the current session.
+#'
+#' @returns A function that removes the hook again, invisibly.
+#'
+#' @examples
+#' if (interactive()) {
+#'   library(shiny)
+#'
+#'   server <- function(input, output, session) {
+#'     snap_on_restore(function(state) {
+#'       message("restoring ", length(state$inputs), " inputs")
+#'     })
+#'     snap_on_restored(function(state, report) {
+#'       print(report)
+#'     })
+#'   }
+#' }
+#' @export
+snap_on_restore <- function(fn, session = shiny::getDefaultReactiveDomain()) {
+  session <- require_session(session, "snap_on_restore")
+  if (!is.function(fn)) {
+    snap_abort("`fn` must be a function taking one argument, `state`.")
+  }
+  ctrl <- snap_controller(session)
+  ctrl$on_restore$add(scope_restore_hook(fn, session))
+}
+
+#' @rdname snap_on_restore
+#' @export
+snap_on_restored <- function(fn, session = shiny::getDefaultReactiveDomain()) {
+  session <- require_session(session, "snap_on_restored")
+  if (!is.function(fn)) {
+    snap_abort("`fn` must be a function taking two arguments, `state` and `report`.")
+  }
+  ctrl <- snap_controller(session)
+  ctrl$on_restored$add(scope_restored_hook(fn, session))
+}
+
+#' Filter and un-namespace a named list
+#'
+#' @noRd
+scope_list <- function(x, prefix) {
+  if (length(x) == 0L) {
+    return(list())
+  }
+  keep <- startsWith(names(x), prefix)
+  out <- x[keep]
+  names(out) <- substring(names(x)[keep], nchar(prefix) + 1L)
+  out
+}
+
+#' A restore `state` as seen from a module
+#'
+#' @noRd
+scope_restore_state <- function(state, prefix) {
+  state$inputs <- scope_list(state$inputs, prefix)
+  state$values <- scope_list(state$values, prefix)
+  state
+}
+
+#' @noRd
+scope_restore_hook <- function(fn, session) {
+  if (!is_module_session(session)) {
+    return(fn)
+  }
+  prefix <- session_prefix(session)
+  function(state) fn(scope_restore_state(state, prefix))
+}
+
+#' @noRd
+scope_restored_hook <- function(fn, session) {
+  if (!is_module_session(session)) {
+    return(fn)
+  }
+  prefix <- session_prefix(session)
+  function(state, report) {
+    fn(
+      scope_restore_state(state, prefix),
+      subset_report(report, startsWith(report$id, prefix))
+    )
+  }
+}

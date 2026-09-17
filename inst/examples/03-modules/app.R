@@ -10,7 +10,8 @@ params_ui <- function(id, label) {
     numericInput(ns("n"), "n", 10),
     selectInput(ns("kind"), "kind", c("linear", "quadratic"), "linear"),
     actionButton(ns("bump"), "Bump"),
-    snap_download_button(ns("save"), "Save from module")
+    snap_download_button(ns("save"), "Save from module"),
+    snap_file_input(ns("restore"), "Restore from module")
   )
 }
 
@@ -23,9 +24,19 @@ params_server <- function(id) {
       state$values$summary <- paste(state$inputs$kind, state$inputs$n)
     })
     snap_download_handler("save", filename = paste0(id, "-state"))
+    snap_file_restore("restore")
+    seen <- reactiveValues(inputs = list(), values = list(), report_ids = list())
+    snap_on_restore(function(state) {
+      seen$inputs <- c(seen$inputs, list(names(state$inputs)))
+      seen$values <- c(seen$values, list(names(state$values)))
+    })
+    snap_on_restored(function(state, report) {
+      seen$report_ids <- c(seen$report_ids, list(report$id))
+    })
     exportTestValues(
       module_snapshot = snap_serialize(snap_take(session = session, scope = "module")),
-      root_snapshot = snap_serialize(snap_take(session = session))
+      root_snapshot = snap_serialize(snap_take(session = session)),
+      seen = reactiveValuesToList(seen)
     )
     NULL
   })
@@ -46,8 +57,16 @@ server <- function(input, output, session) {
   params_server("left")
   params_server("right")
   snap_download_handler("save")
+  reports <- reactiveVal(list())
+  snap_on_restored(function(state, report) {
+    reports(c(reports(), list(list(
+      timed_out = attr(report, "timed_out"),
+      status = stats::setNames(as.list(report$status), report$id)
+    ))))
+  })
   exportTestValues(
-    snapshot = snap_serialize(snap_take(session = session))
+    snapshot = snap_serialize(snap_take(session = session)),
+    reports = reports()
   )
 }
 

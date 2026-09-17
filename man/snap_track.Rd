@@ -37,8 +37,8 @@ if (interactive()) {
   library(shiny)
 
   server <- function(input, output, session) {
-    rv_display <- reactiveValues(digits = 3L, scientific = FALSE)
-    snap_track(rv_display)
+    prefs <- reactiveValues(digits = 3L, scientific = FALSE)
+    snap_track(prefs)
   }
 }
 }

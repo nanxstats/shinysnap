@@ -108,8 +108,17 @@ as_snapshot <- function(x) {
   if (inherits(x, "shinysnap")) {
     return(validate_snapshot(x))
   }
-  if (is_string(x) && looks_like_json(x)) {
-    return(snap_unserialize(x))
+  if (is_string(x)) {
+    if (looks_like_json(x)) {
+      return(snap_unserialize(x))
+    }
+    if (file.exists(x)) {
+      return(snap_read(x))
+    }
+    snap_abort(
+      sprintf("`%s` is neither JSON text nor an existing file.", x),
+      class = "shinysnap_invalid"
+    )
   }
   if (is.list(x) && (length(x) == 0L || has_full_names(x))) {
     known <- intersect(names(x), names(formals(new_snapshot)))
@@ -150,7 +159,7 @@ looks_like_json <- function(x) {
 #' snap <- snap_unserialize('{
 #'   "format": 1,
 #'   "inputs": {"n": 100, "rate": 0.025},
-#'   "values": {"rv_display": {"digits": 3, "scientific": false}},
+#'   "values": {"prefs": {"digits": 3, "scientific": false}},
 #'   "meta": {"note": "baseline scenario"}
 #' }')
 #' snap_inputs(snap)

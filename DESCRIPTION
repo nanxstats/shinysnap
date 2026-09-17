@@ -20,14 +20,18 @@ Encoding: UTF-8
 Imports:
     htmltools,
     jsonlite,
+    promises,
     R6,
     shiny (>= 1.8.0),
     utils,
     zmij
 Suggests:
+    bslib,
     chromote,
     knitr,
+    later,
     rmarkdown,
+    shinyMatrix,
     shinytest2,
     testthat (>= 3.0.0),
     withr

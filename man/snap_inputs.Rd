@@ -28,7 +28,7 @@ fully namespaced input ids), \code{snap_values()} the server-side values, and
 snap <- snap_unserialize('{
   "format": 1,
   "inputs": {"n": 100, "rate": 0.025},
-  "values": {"rv_display": {"digits": 3, "scientific": false}},
+  "values": {"prefs": {"digits": 3, "scientific": false}},
   "meta": {"note": "baseline scenario"}
 }')
 snap_inputs(snap)

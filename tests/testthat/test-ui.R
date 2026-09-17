@@ -67,3 +67,47 @@ test_that("snap_download_handler() namespaces ids inside modules", {
     expect_identical(snap_read(path)$inputs, list(`m-n` = 3L))
   })
 })
+
+test_that("snap_file_input() is a fileInput with the client script", {
+  tag <- snap_file_input("restore", "Load it", accept = c(".json", ".txt"))
+  html <- as.character(tag)
+  expect_match(html, "Load it", fixed = TRUE)
+  expect_match(html, "id=\"restore\"", fixed = TRUE)
+  expect_match(html, "accept=\".json,.txt\"", fixed = TRUE)
+  deps <- htmltools::findDependencies(tag)
+  expect_true("shinysnap" %in% vapply(deps, function(d) d$name, character(1)))
+})
+
+test_that("snap_file_restore() reports errors through a modal or by stopping", {
+  seen <- new.env()
+  server <- function(input, output, session) {
+    snap_enable(app = "ui")
+    snap_file_restore("modal", on_error = "modal", validate = function(snap) stop("bad modal file"))
+    snap_file_restore("stopper", on_error = "stop", validate = function(snap) {
+      seen$stopped <- TRUE
+      stop("bad stop file")
+    })
+    NULL
+  }
+  shiny::testServer(server, {
+    session$setInputs(.shinysnap_ready = TRUE)
+    good <- withr::local_tempfile(fileext = ".json")
+    snap_write(new_snapshot(inputs = list(n = 1L), app = list(name = "ui")), good)
+    upload <- data.frame(name = basename(good), size = file.size(good), type = "application/json", datapath = good)
+    # The modal handler catches the error (nothing propagates to the caller).
+    expect_error(session$setInputs(modal = upload), NA)
+    # The stop handler re-raises it; shiny routes an observer error to the
+    # session, so we confirm the failing validate ran rather than asserting on
+    # how the error surfaces.
+    suppressWarnings(try(session$setInputs(stopper = upload), silent = TRUE))
+    expect_true(isTRUE(seen$stopped))
+  })
+})
+
+test_that("resolve_filename() handles functions, reactives, and empty values", {
+  expect_identical(resolve_filename("plain"), "plain")
+  expect_identical(resolve_filename(function() "fun"), "fun")
+  expect_identical(resolve_filename(character(0)), "")
+  expect_identical(resolve_filename(NA_character_), "")
+  expect_identical(resolve_filename(c("first", "second")), "first")
+})

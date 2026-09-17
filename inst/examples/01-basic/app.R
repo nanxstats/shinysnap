@@ -22,7 +22,8 @@ ui <- fluidPage(
       fileInput("upload", "Upload"),
       actionButton("go", "Go"),
       textInput("filename", "File name", "basic-state"),
-      snap_download_button("save")
+      snap_download_button("save"),
+      snap_file_input("restore")
     ),
     mainPanel(
       tabsetPanel(
@@ -35,16 +36,27 @@ ui <- fluidPage(
 )
 
 server <- function(input, output, session) {
-  snap_enable(app = "shinysnap-basic", version = "1.0.0", exclude = "^filename$")
+  snap_enable(app = "shinysnap-basic", version = "1.0.0", exclude = c("^filename$", "^restore$"))
   rv <- reactiveValues(clicks = 0L, note = "none")
   snap_track(rv)
   observeEvent(input$go, rv$clicks <- rv$clicks + 1L)
   snap_download_handler("save", filename = reactive(input$filename))
+  snap_file_restore("restore")
+
+  reports <- reactiveVal(list())
+  snap_on_restored(function(state, report) {
+    reports(c(reports(), list(list(
+      timed_out = attr(report, "timed_out"),
+      status = stats::setNames(as.list(report$status), report$id),
+      detail = stats::setNames(as.list(report$detail), report$id)
+    ))))
+  })
 
   output$summary <- renderPrint(str(reactiveValuesToList(input)))
 
   exportTestValues(
-    snapshot = snap_serialize(snap_take(session = session))
+    snapshot = snap_serialize(snap_take(session = session)),
+    reports = reports()
   )
 }
 

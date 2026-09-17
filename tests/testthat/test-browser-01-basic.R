@@ -52,3 +52,31 @@ test_that("01-basic: the inventory names every core binding and the snapshot is 
   expect_identical(from_file$values, snap2$values)
   expect_identical(from_file$bindings, snap2$bindings)
 })
+
+test_that("01-basic: a saved file restores every core input through the upload control", {
+  app <- start_app("01-basic")
+  on.exit(app$stop())
+  snap <- export_snapshot(app)
+  snap$inputs$text <- "restored"
+  snap$inputs$textarea <- "one\ntwo"
+  snap$inputs$number <- 7L
+  snap$inputs$checkbox <- FALSE
+  snap$inputs$checkgroup <- "b"
+  snap$inputs$radio <- "z"
+  snap$inputs$slider <- 60L
+  snap$inputs$range <- c(5L, 95L)
+  snap$inputs$date <- as.Date("2025-05-05")
+  snap$inputs$daterange <- as.Date(c("2025-01-01", "2025-12-31"))
+  snap$inputs$select <- "three"
+  snap$inputs$multi <- "two"
+  snap$inputs$tabs <- "Second"
+  snap$values$rv$note <- "from file"
+  report <- restore_upload(app, "restore", snap)
+  expect_false(isTRUE(report$timed_out))
+  expect_all_restored(report)
+  after <- export_snapshot(app)
+  for (id in names(snap$inputs)) {
+    expect_identical(after$inputs[[id]], snap$inputs[[id]], label = id)
+  }
+  expect_identical(after$values$rv$note, "from file")
+})

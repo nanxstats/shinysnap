@@ -29,3 +29,28 @@ test_that("03-modules: snapshots use full ids and namespace tracked values and h
   expect_identical(from_module$inputs, snap$inputs)
   expect_identical(snap_read(app$get_download("save"))$values, snap$values)
 })
+
+test_that("03-modules: a restore started inside a module restores the whole app", {
+  app <- start_app("03-modules")
+  on.exit(app$stop())
+  snap <- export_snapshot(app)
+  snap$inputs[["left-n"]] <- 3L
+  snap$inputs[["right-n"]] <- 4L
+  snap$inputs[["right-kind"]] <- "quadratic"
+  snap$inputs$title <- "restored title"
+  snap$values[["left-rv"]]$bumps <- 11L
+  report <- restore_upload(app, "left-restore", snap)
+  expect_false(isTRUE(report$timed_out))
+  expect_all_restored(report)
+  vals <- app$get_values(input = TRUE)$input
+  expect_identical(vals[["left-n"]], 3L)
+  expect_identical(vals[["right-n"]], 4L)
+  expect_identical(vals[["right-kind"]], "quadratic")
+  expect_identical(vals$title, "restored title")
+  after <- export_snapshot(app)
+  expect_identical(after$values[["left-rv"]]$bumps, 11L)
+  seen <- app$get_value(export = "left-seen")
+  expect_identical(unlist(seen$inputs), c("kind", "n"))
+  expect_identical(unlist(seen$values), c("rv", "summary"))
+  expect_identical(unlist(seen$report_ids), c("left-kind", "left-n"))
+})

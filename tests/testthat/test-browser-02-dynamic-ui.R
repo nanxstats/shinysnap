@@ -46,3 +46,128 @@ test_that("02-dynamic-ui: a snapshot contains only the live branch's inputs", {
   expect_identical(from_file$inputs, snap2$inputs)
   expect_identical(from_file$bindings, snap2$bindings)
 })
+
+dynamic_snapshot <- function(inputs) {
+  new_snapshot(
+    inputs = inputs,
+    app = list(name = "shinysnap-dynamic-ui", version = "1.0.0"),
+    created = "2026-01-01T00:00:00Z"
+  )
+}
+
+test_that("02-dynamic-ui: with the accelerator, dynamic UI is constructed with the restored values", {
+  app <- start_app("02-dynamic-ui")
+  on.exit(app$stop())
+  json <- snap_serialize(
+    dynamic_snapshot(list(method = "b", b_k = 7L, b_text = "zeta", shared = 55L)),
+    pretty = FALSE
+  )
+  report <- restore_json(app, json)
+  expect_false(isTRUE(report$timed_out))
+  expect_identical(report$status$method, "applied")
+  expect_identical(report$status$b_k, "constructed")
+  expect_identical(report$status$b_text, "constructed")
+  expect_identical(report$status$shared, "constructed")
+
+  vals <- app$get_values(input = TRUE)$input
+  expect_identical(vals$method, "b")
+  expect_identical(vals$b_k, 7L)
+  expect_identical(vals$b_text, "zeta")
+  expect_identical(vals$shared, 55L)
+
+  counters <- app$get_value(export = "counters")
+  expect_identical(counters$b_k, 1L)
+  seen <- app$get_value(export = "restoring_seen")
+  expect_true(isTRUE(seen$b_k[[1]]))
+  expect_false(isTRUE(app$get_value(export = "is_restoring")))
+  expect_length(app$get_value(export = "errors"), 0)
+})
+
+test_that("02-dynamic-ui: without the accelerator the restored value still beats the default", {
+  app <- start_app("02-dynamic-ui")
+  on.exit(app$stop())
+  app$set_inputs(use_ctx = FALSE)
+  json <- snap_serialize(
+    dynamic_snapshot(list(method = "b", b_k = 7L, b_text = "zeta", shared = 55L)),
+    pretty = FALSE
+  )
+  report <- restore_json(app, json)
+  expect_false(isTRUE(report$timed_out))
+  expect_identical(report$status$method, "applied")
+  expect_identical(report$status$b_k, "applied")
+  expect_identical(report$status$b_text, "applied")
+  expect_identical(report$status$shared, "reapplied")
+
+  vals <- app$get_values(input = TRUE)$input
+  expect_identical(vals$b_k, 7L)
+  expect_identical(vals$b_text, "zeta")
+  expect_identical(vals$shared, 55L)
+  counters <- app$get_value(export = "counters")
+  expect_identical(counters$b_k, 2L)
+  expect_false(isTRUE(app$get_value(export = "is_restoring")))
+})
+
+test_that("02-dynamic-ui: an input that never appears is reported missing and the promise resolves", {
+  app <- start_app("02-dynamic-ui")
+  on.exit(app$stop())
+  app$set_inputs(timeout = 3)
+  json <- snap_serialize(
+    dynamic_snapshot(list(method = "a", a_n = 42L, ghost = "boo")),
+    pretty = FALSE
+  )
+  # `ghost` never appears; the transaction still settles (on the quiet
+  # period, ahead of the timeout) and reports it missing.
+  report <- restore_json(app, json)
+  expect_identical(report$status$ghost, "missing")
+  expect_identical(report$status$a_n, "applied")
+  expect_identical(app$get_values(input = TRUE)$input$a_n, 42L)
+  expect_length(app$get_value(export = "errors"), 0)
+  expect_false(isTRUE(app$get_value(export = "is_restoring")))
+})
+
+test_that("02-dynamic-ui: a second restore cancels the first", {
+  app <- start_app("02-dynamic-ui")
+  on.exit(app$stop())
+  app$set_inputs(timeout = 8)
+  stuck <- snap_serialize(dynamic_snapshot(list(method = "a", ghost = "boo")), pretty = FALSE)
+  good <- snap_serialize(dynamic_snapshot(list(method = "b", b_k = 9L)), pretty = FALSE)
+  before <- app$get_value(export = "reports")
+  app$set_inputs(json = stuck)
+  app$click("restore_text")
+  app$set_inputs(json = good)
+  app$click("restore_text")
+  reports <- wait_for_reports(app, before)
+  expect_length(reports, length(before) + 1L)
+  report <- last_report(reports)
+  expect_false(isTRUE(report$timed_out))
+  expect_identical(report$status$b_k, "constructed")
+  expect_null(report$status$ghost)
+  expect_identical(app$get_value(export = "cancelled"), 1L)
+  expect_identical(app$get_values(input = TRUE)$input$b_k, 9L)
+})
+
+test_that("02-dynamic-ui: a saved file restores through the upload control, two levels deep", {
+  app <- start_app("02-dynamic-ui")
+  on.exit(app$stop())
+  snap <- export_snapshot(app)
+  snap$inputs$a_n <- 77L
+  snap$inputs$a_rate <- 0.25
+  snap$inputs$a_sub <- "y"
+  snap$inputs$a_sub_x <- NULL
+  snap$inputs$a_sub_y <- 5L
+  snap$inputs$shared <- 123L
+  report <- restore_upload(app, "restore", snap)
+  expect_false(isTRUE(report$timed_out))
+  expect_all_restored(report)
+  expect_identical(report$status$a_sub, "applied")
+  expect_identical(report$status$a_sub_y, "constructed")
+  expect_null(report$status$a_sub_x)
+  vals <- app$get_values(input = TRUE)$input
+  expect_identical(vals$a_n, 77L)
+  expect_identical(vals$a_rate, 0.25)
+  expect_identical(vals$a_sub, "y")
+  expect_identical(vals$a_sub_y, 5L)
+  expect_identical(vals$shared, 123L)
+  after <- export_snapshot(app)
+  expect_false("a_sub_x" %in% names(after$inputs))
+})
