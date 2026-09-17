@@ -144,3 +144,10 @@ check_patterns <- function(x, what) {
   }
   x
 }
+
+#' The sentinel shiny uses for values that must not be bookmarked
+#'
+#' @noRd
+unserializable_serializer <- function(value, stateDir) {
+  structure(list(), serializable = FALSE)
+}

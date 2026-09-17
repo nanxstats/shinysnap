@@ -372,7 +372,10 @@ prime_restore_context <- function(ctrl, txn) {
     },
     dir = prev$dir
   )
-  ctx$set(active = TRUE, input = txn$state$inputs, values = list(), dir = NULL)
+  ctx$set(
+    active = TRUE, input = txn$state$inputs, values = list(),
+    dir = attr(txn$state$snapshot, "bundle_dir", exact = TRUE)
+  )
   invisible(TRUE)
 }
 

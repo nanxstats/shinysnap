@@ -5,11 +5,17 @@
 \alias{snap_read}
 \title{Write a snapshot to a file and read it back}
 \usage{
-snap_write(x, path, format = c("auto", "json", "rds"), pretty = TRUE, ...)
+snap_write(
+  x,
+  path,
+  format = c("auto", "json", "zip", "rds"),
+  pretty = TRUE,
+  ...
+)
 
 snap_read(
   path,
-  format = c("auto", "json", "rds"),
+  format = c("auto", "json", "zip", "rds"),
   trust = FALSE,
   unknown_types = c("error", "keep"),
   ...
@@ -20,8 +26,9 @@ snap_read(
 
 \item{path}{The file path.}
 
-\item{format}{\code{"auto"} picks the format from the extension (\code{.json} or
-\code{.rds}); otherwise the format to use regardless of the extension.}
+\item{format}{\code{"auto"} picks the format from the extension (\code{.json},
+\code{.zip}, or \code{.rds}); otherwise the format to use regardless of the
+extension.}
 
 \item{pretty}{Pretty-print JSON (the default) or write one compact line.}
 
@@ -40,9 +47,20 @@ snapshot object.
 \description{
 \code{snap_write()} saves a snapshot; \code{snap_read()} loads one. The canonical
 format is JSON (see \code{\link[=snap_serialize]{snap_serialize()}}): plain text, readable, diffable,
-and safe to open. The \code{"rds"} format stores the R object with \code{saveRDS()};
-it is neither readable nor safe across versions, and reading it requires
-\code{trust = TRUE} because unserializing a file runs arbitrary code paths.
+and safe to open. The \code{"zip"} format is a \emph{bundle}: a zip archive holding
+the same JSON as \code{manifest.json} plus the files of any \code{fileInput()}
+uploads (under \verb{attachments/}) and, with \code{unsupported = "rds"}, opaque R
+objects (under \verb{objects/}); it needs the zip package. The \code{"rds"} format
+stores the R object with \code{saveRDS()}; it is neither readable nor safe
+across versions, and reading it requires \code{trust = TRUE} because
+unserializing a file runs arbitrary code paths.
+}
+\details{
+Reading a bundle checks the archive for path traversal and caps its
+uncompressed size at \code{getOption("shinysnap.max_bundle_bytes", 100 * 1024^2)}
+bytes, then extracts it into a fresh temporary directory;
+\code{\link[=snap_attachment]{snap_attachment()}} returns the local paths of the extracted uploads and
+bundled objects are decoded only with \code{trust = TRUE}.
 }
 \examples{
 snap <- snap_unserialize('{"format": 1, "inputs": {"n": 100, "rate": 0.025}}')

@@ -417,3 +417,103 @@ snap_take <- function(session = shiny::getDefaultReactiveDomain(), ...,
     producer = snap_producer()
   )
 }
+
+#' Compare two snapshots
+#'
+#' Lists the inputs, values, and metadata entries that differ between two
+#' snapshots. Values are flattened one level, so a tracked `reactiveValues`
+#' stored as `prefs` with a changed `digits` field shows up as
+#' `prefs$digits`.
+#'
+#' @param a,b Snapshot objects, file paths, or JSON text.
+#'
+#' @returns A data frame of class `shinysnap_diff` with one row per
+#'   difference and the columns `id`, `section` (`"inputs"`, `"values"`, or
+#'   `"meta"`), `status` (`"added"`, `"removed"`, or `"changed"`, seen from
+#'   `a` to `b`), and the list columns `old` and `new` holding the values
+#'   (`NULL` for the side where the entry is absent).
+#'
+#' @examples
+#' a <- snap_unserialize('{"format": 1, "inputs": {"n": 1, "x": "old"},
+#'   "values": {"prefs": {"digits": 3}}}')
+#' b <- snap_unserialize('{"format": 1, "inputs": {"n": 1, "y": true},
+#'   "values": {"prefs": {"digits": 4}}}')
+#' snap_diff(a, b)
+#' @export
+snap_diff <- function(a, b) {
+  a <- as_snapshot(a)
+  b <- as_snapshot(b)
+  rows <- list()
+  add <- function(section, id, status, old, new) {
+    rows[[length(rows) + 1L]] <<- list(
+      id = id, section = section, status = status, old = old, new = new
+    )
+  }
+  diff_section <- function(section, xa, xb) {
+    ids <- union(names(xa), names(xb))
+    for (id in ids) {
+      in_a <- id %in% names(xa)
+      in_b <- id %in% names(xb)
+      if (in_a && !in_b) {
+        add(section, id, "removed", xa[[id]], NULL)
+      } else if (!in_a && in_b) {
+        add(section, id, "added", NULL, xb[[id]])
+      } else if (!identical(xa[[id]], xb[[id]])) {
+        add(section, id, "changed", xa[[id]], xb[[id]])
+      }
+    }
+  }
+  diff_section("inputs", a$inputs, b$inputs)
+  diff_section("values", flatten_values(a$values), flatten_values(b$values))
+  diff_section("meta", a$meta, b$meta)
+  col <- function(field) vapply(rows, function(r) r[[field]], character(1))
+  out <- data.frame(
+    id = col("id"), section = col("section"), status = col("status"),
+    stringsAsFactors = FALSE
+  )
+  out$old <- lapply(rows, function(r) r$old)
+  out$new <- lapply(rows, function(r) r$new)
+  class(out) <- c("shinysnap_diff", "data.frame")
+  out
+}
+
+#' Flatten fully named list values one level (`prefs` -> `prefs$digits`)
+#'
+#' @noRd
+flatten_values <- function(values) {
+  out <- list()
+  for (nm in names(values)) {
+    v <- values[[nm]]
+    if (is.list(v) && length(v) > 0L && has_full_names(v) && !anyDuplicated(names(v))) {
+      for (f in names(v)) out[paste0(nm, "$", f)] <- list(v[[f]])
+    } else {
+      out[nm] <- list(v)
+    }
+  }
+  out
+}
+
+#' @export
+print.shinysnap_diff <- function(x, ...) {
+  if (nrow(x) == 0L) {
+    cat("<shinysnap_diff> no differences\n")
+    return(invisible(x))
+  }
+  cat(sprintf("<shinysnap_diff> %d difference(s)\n", nrow(x)))
+  show <- function(v) {
+    if (is.null(v)) {
+      return("")
+    }
+    s <- paste(deparse(v, width.cutoff = 60L), collapse = " ")
+    if (nchar(s) > 40L) s <- paste0(substr(s, 1L, 37L), "...")
+    s
+  }
+  df <- data.frame(
+    id = x$id, section = x$section, status = x$status,
+    old = vapply(x$old, show, character(1)),
+    new = vapply(x$new, show, character(1)),
+    stringsAsFactors = FALSE
+  )
+  print(df, row.names = FALSE, ...)
+  invisible(x)
+}

@@ -121,3 +121,39 @@ test_that("validate_snapshot() checks the app field", {
   bad$app <- "x"
   expect_error(validate_snapshot(bad), "`app` must be a list", class = "shinysnap_invalid")
 })
+
+test_that("snap_diff() lists added, removed, and changed entries", {
+  a <- new_snapshot(
+    inputs = list(n = 1L, x = "old", same = TRUE, gone = 1),
+    values = list(prefs = list(digits = 3L, sci = FALSE), scalar = 1, other = list(k = 1)),
+    meta = list(note = "a")
+  )
+  b <- new_snapshot(
+    inputs = list(n = 1L, x = "new", same = TRUE, fresh = 2),
+    values = list(prefs = list(digits = 4L, sci = FALSE, extra = "e"), scalar = 2, other = list(k = 1)),
+    meta = list(note = "a", tag = "t")
+  )
+  d <- snap_diff(a, b)
+  expect_s3_class(d, c("shinysnap_diff", "data.frame"))
+  expect_identical(names(d), c("id", "section", "status", "old", "new"))
+  expect_identical(d$id, c("x", "gone", "fresh", "prefs$digits", "scalar", "prefs$extra", "tag"))
+  expect_identical(d$section, c("inputs", "inputs", "inputs", "values", "values", "values", "meta"))
+  expect_identical(d$status, c("changed", "removed", "added", "changed", "changed", "added", "added"))
+  expect_identical(d$old, list("old", 1, NULL, 3L, 1, NULL, NULL))
+  expect_identical(d$new, list("new", NULL, 2, 4L, 2, "e", "t"))
+  expect_output(print(d), "7 difference\\(s\\)")
+  expect_output(print(d), "prefs\\$digits")
+
+  none <- snap_diff(a, a)
+  expect_identical(nrow(none), 0L)
+  expect_identical(names(none), c("id", "section", "status", "old", "new"))
+  expect_output(print(none), "no differences")
+
+  # NULL-valued inputs are compared too, and text or files are accepted.
+  c1 <- "{\"format\": 1, \"inputs\": {\"sel\": null}}"
+  c2 <- "{\"format\": 1, \"inputs\": {\"sel\": \"a\"}}"
+  d2 <- snap_diff(c1, c2)
+  expect_identical(d2$status, "changed")
+  expect_identical(d2$old, list(NULL))
+  expect_identical(snap_diff(c1, c1)$status, character())
+})

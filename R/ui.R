@@ -15,7 +15,8 @@
 #'   a reactive (for example a text input where the user names the file). It
 #'   is reduced to the characters `A-Z a-z 0-9 . _ -`, falls back to
 #'   `"state"` when empty, and gets the format's extension appended.
-#' @param format The file format. Only `"json"` is available.
+#' @param format The file format: `"json"` (the default) or `"zip"` for a
+#'   bundle that includes uploaded files (see [snap_write()]).
 #' @param snapshot `NULL` to take a snapshot when the button is clicked (the
 #'   default), a snapshot object, or a function or reactive returning one.
 #' @param session The Shiny session. Defaults to the current session.
@@ -50,14 +51,14 @@ snap_download_button <- function(id, label = "Save state",
 
 #' @rdname snap_download_button
 #' @export
-snap_download_handler <- function(id, filename = "state", format = "json", ...,
+snap_download_handler <- function(id, filename = "state", format = c("json", "zip"), ...,
                                   snapshot = NULL,
                                   session = shiny::getDefaultReactiveDomain()) {
   session <- require_session(session, "snap_download_handler")
   if (!is.character(id) || length(id) == 0L || anyNA(id) || !all(nzchar(id))) {
     snap_abort("`id` must be a character vector of output ids.")
   }
-  format <- match.arg(format, "json")
+  format <- match.arg(format)
   dots <- list(...)
   snap_controller(session)
   ext <- paste0(".", format)
@@ -71,7 +72,7 @@ snap_download_handler <- function(id, filename = "state", format = "json", ...,
       snap <- shiny::isolate(resolve_snapshot(snapshot, session, dots))
       snap_write(snap, file, format = format)
     },
-    contentType = "application/json"
+    contentType = if (format == "zip") "application/zip" else "application/json"
   )
   out <- session$output
   for (one in id) out[[one]] <- handler
@@ -138,7 +139,7 @@ resolve_snapshot <- function(snapshot, session, dots) {
 #'   shinyApp(ui, server)
 #' }
 #' @export
-snap_file_input <- function(id, label = "Restore state", accept = ".json", ...) {
+snap_file_input <- function(id, label = "Restore state", accept = c(".json", ".zip"), ...) {
   tag <- shiny::fileInput(id, label, accept = accept, ...)
   htmltools::attachDependencies(tag, snap_dependency(), append = TRUE)
 }

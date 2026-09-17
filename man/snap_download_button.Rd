@@ -16,7 +16,7 @@ snap_download_button(
 snap_download_handler(
   id,
   filename = "state",
-  format = "json",
+  format = c("json", "zip"),
   ...,
   snapshot = NULL,
   session = shiny::getDefaultReactiveDomain()
@@ -35,7 +35,8 @@ a reactive (for example a text input where the user names the file). It
 is reduced to the characters \verb{A-Z a-z 0-9 . _ -}, falls back to
 \code{"state"} when empty, and gets the format's extension appended.}
 
-\item{format}{The file format. Only \code{"json"} is available.}
+\item{format}{The file format: \code{"json"} (the default) or \code{"zip"} for a
+bundle that includes uploaded files (see \code{\link[=snap_write]{snap_write()}}).}
 
 \item{snapshot}{\code{NULL} to take a snapshot when the button is clicked (the
 default), a snapshot object, or a function or reactive returning one.}

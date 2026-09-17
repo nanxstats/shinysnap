@@ -5,7 +5,7 @@
 \alias{snap_file_restore}
 \title{Restore-state upload and its handler}
 \usage{
-snap_file_input(id, label = "Restore state", accept = ".json", ...)
+snap_file_input(id, label = "Restore state", accept = c(".json", ".zip"), ...)
 
 snap_file_restore(
   id,

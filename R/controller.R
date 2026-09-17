@@ -36,6 +36,11 @@ SnapController <- R6Class(
       self$on_restore <- new_callbacks()
       self$on_restored <- new_callbacks()
       self$flags <- shiny::reactiveValues(restoring = FALSE)
+      # Keep the internal inputs out of native bookmark URLs: shiny's
+      # serializer drops values whose serializer marks them unserializable.
+      for (id in c(".shinysnap_inventory", ".shinysnap_ready", ".shinysnap_result")) {
+        shiny::setSerializer(id, unserializable_serializer, session = root)
+      }
       # Messages to the client go through a replaceable field so that tests
       # can observe them; real sessions send custom messages from the root.
       self$send <- function(type, message) {

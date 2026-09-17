@@ -327,5 +327,196 @@ test_that("the rds format works but requires trust to read", {
   expect_true(is_string(back$created))
   saveRDS(list(not = "a snapshot"), path)
   expect_error(snap_read(path, trust = TRUE), class = "shinysnap_invalid")
-  expect_error(snap_write(snap, withr::local_tempfile(fileext = ".zip")), "extension")
+  expect_error(snap_write(snap, withr::local_tempfile(fileext = ".tar")), "extension")
+})
+
+# Bundles ---------------------------------------------------------------------
+
+bundle_fixture <- function() {
+  up <- tempfile(fileext = ".csv")
+  writeLines(c("a,b", "1,2"), up)
+  up2 <- tempfile(fileext = ".txt")
+  writeLines("hello", up2)
+  new_snapshot(
+    inputs = list(n = 1L, when = as.Date("2024-01-01"), M = matrix(1:4, 2)),
+    values = list(fit = structure(list(coef = 1), class = "myfit"), plain = list(a = 1)),
+    attachments = list(
+      upload = list(name = "data.csv", size = file.size(up), type = "text/csv", datapath = up),
+      multi = list(
+        name = c("x.txt", "x.txt"), size = c(6, 6), type = c("text/plain", "text/plain"),
+        datapath = c(up2, up2)
+      )
+    ),
+    meta = list(note = "bundle"),
+    app = list(name = "b", version = "1"),
+    created = "2026-01-01T00:00:00Z"
+  )
+}
+
+strip_bundle <- function(s) {
+  attr(s, "bundle_dir") <- NULL
+  s$producer <- NULL
+  for (id in names(s$attachments)) s$attachments[[id]]$datapath <- NULL
+  s
+}
+
+test_that("a bundle round-trips inputs, values, attachments, and opaque objects", {
+  skip_if_not_installed("zip")
+  snap <- bundle_fixture()
+  path <- withr::local_tempfile(fileext = ".zip")
+  expect_error(snap_write(snap, path), class = "shinysnap_unsupported_value")
+  snap_write(snap, path, unsupported = "rds")
+  entries <- zip::zip_list(path)$filename
+  expect_identical(entries[1], "manifest.json")
+  expect_true("attachments/upload/data.csv" %in% entries)
+  expect_true(all(c("attachments/multi/1-x.txt", "attachments/multi/2-x.txt") %in% entries))
+  expect_true(any(grepl("^objects/1-values_fit\\.rds$", entries)))
+
+  expect_warning(back <- snap_read(path), class = "shinysnap_untrusted")
+  expect_s3_class(back, "shinysnap")
+  expect_null(back$values$fit)
+  expect_identical(back$values$plain, list(a = 1))
+  expect_identical(back$inputs, snap$inputs)
+  expect_identical(back$meta, snap$meta)
+  expect_identical(names(back$attachments), c("upload", "multi"))
+  expect_identical(back$attachments$upload$name, "data.csv")
+  expect_identical(back$attachments$upload$size, file.size(snap$attachments$upload$datapath))
+  expect_identical(back$attachments$upload$type, "text/csv")
+  p <- snap_attachment(back, "upload")
+  expect_true(file.exists(p))
+  expect_identical(readLines(p), c("a,b", "1,2"))
+  expect_identical(basename(snap_attachment(back, "multi")), c("1-x.txt", "2-x.txt"))
+  expect_identical(readLines(snap_attachment(back, "multi")[2]), "hello")
+  expect_null(snap_attachment(back, "nope"))
+  expect_error(snap_attachment(back, 1), "`id`")
+  dir <- attr(back, "bundle_dir")
+  expect_true(dir.exists(dir))
+  expect_true(startsWith(normalizePath(p), normalizePath(dir)))
+
+  trusted <- snap_read(path, trust = TRUE)
+  expect_identical(trusted$values$fit, snap$values$fit)
+  expect_identical(strip_bundle(trusted), strip_bundle(snap))
+
+  # The manifest is the JSON format with file records.
+  txt <- read_utf8(file.path(dir, "manifest.json"))
+  expect_match(txt, "\"$type\": \"file\"", fixed = TRUE)
+  expect_match(txt, "\"path\": \"attachments/upload/data.csv\"", fixed = TRUE)
+  expect_match(txt, "\"path\": [\"attachments/multi/1-x.txt\", \"attachments/multi/2-x.txt\"]", fixed = TRUE)
+  expect_match(txt, "\"path\": \"objects/1-values_fit.rds\"", fixed = TRUE)
+
+  # Re-bundling a read bundle copies the extracted files.
+  path2 <- withr::local_tempfile(fileext = ".zip")
+  snap_write(trusted, path2, unsupported = "rds")
+  again <- snap_read(path2, trust = TRUE)
+  expect_identical(strip_bundle(again), strip_bundle(snap))
+  expect_identical(readLines(snap_attachment(again, "upload")), c("a,b", "1,2"))
+
+  # Without attachments or opaque values a bundle needs no trust.
+  plain <- new_snapshot(inputs = list(n = 2L), created = "2026-01-01T00:00:00Z")
+  path3 <- withr::local_tempfile(fileext = ".zip")
+  snap_write(plain, path3)
+  expect_silent(read <- snap_read(path3))
+  expect_identical(strip_bundle(read), strip_bundle(plain))
+  expect_identical(zip::zip_list(path3)$filename, "manifest.json")
+  expect_identical(snap_read(path3, format = "zip")$inputs, list(n = 2L))
+})
+
+test_that("bundle writing refuses missing uploads and odd names are sanitized", {
+  skip_if_not_installed("zip")
+  snap <- new_snapshot(attachments = list(
+    up = list(name = "a.csv", size = 1, type = "t", datapath = file.path(tempdir(), "does-not-exist.csv"))
+  ))
+  expect_error(snap_write(snap, withr::local_tempfile(fileext = ".zip")), "no longer exist")
+  f <- withr::local_tempfile(fileext = ".bin")
+  writeLines("x", f)
+  odd <- new_snapshot(attachments = list(
+    `my id` = list(name = "../we ird/na me.csv", size = 1, type = "t", datapath = f),
+    dots = list(name = "...", size = 1, type = "t", datapath = f)
+  ))
+  path <- withr::local_tempfile(fileext = ".zip")
+  snap_write(odd, path)
+  entries <- zip::zip_list(path)$filename
+  expect_true("attachments/my_id/na_me.csv" %in% entries)
+  expect_true("attachments/dots/file-1" %in% entries)
+  back <- snap_read(path)
+  expect_identical(back$attachments[["my id"]]$name, "../we ird/na me.csv")
+  expect_true(file.exists(snap_attachment(back, "dots")))
+})
+
+test_that("unsafe or oversized bundles are refused before extraction", {
+  skip_if_not_installed("zip")
+  root <- withr::local_tempdir()
+  dir.create(file.path(root, "inner"))
+  writeLines("evil", file.path(root, "evil.txt"))
+  writeLines("{\"format\": 1}", file.path(root, "inner", "manifest.json"))
+  bad <- withr::local_tempfile(fileext = ".zip")
+  suppressWarnings(zip::zip(
+    bad,
+    files = c("manifest.json", "../evil.txt"),
+    root = file.path(root, "inner"), mode = "mirror"
+  ))
+  expect_true("../evil.txt" %in% zip::zip_list(bad)$filename)
+  before <- list.files(tempdir(), pattern = "^shinysnap-bundle-")
+  err <- expect_error(snap_read(bad), class = "shinysnap_unsafe_bundle")
+  expect_match(conditionMessage(err), "../evil.txt", fixed = TRUE)
+  expect_identical(list.files(tempdir(), pattern = "^shinysnap-bundle-"), before)
+
+  expect_error(check_bundle_entries(c("manifest.json", "/abs/path"), c(1, 1), "x"), "unsafe", class = "shinysnap_unsafe_bundle")
+  expect_error(check_bundle_entries(c("manifest.json", "C:\\win\\path"), c(1, 1), "x"), class = "shinysnap_unsafe_bundle")
+  expect_error(check_bundle_entries(c("manifest.json", "a/./b"), c(1, 1), "x"), class = "shinysnap_unsafe_bundle")
+  expect_error(check_bundle_entries(c("manifest.json", ""), c(1, 1), "x"), class = "shinysnap_unsafe_bundle")
+  expect_true(check_bundle_entries(c("manifest.json", "attachments/", "attachments/u/a.csv"), c(1, 0, 1), "x"))
+
+  good <- withr::local_tempfile(fileext = ".zip")
+  snap_write(new_snapshot(inputs = list(n = 1L)), good)
+  withr::with_options(list(shinysnap.max_bundle_bytes = 10), {
+    expect_error(snap_read(good), "exceed", class = "shinysnap_unsafe_bundle")
+  })
+  expect_s3_class(snap_read(good), "shinysnap")
+
+  notzip <- withr::local_tempfile(fileext = ".zip")
+  writeLines("nope", notzip)
+  expect_error(snap_read(notzip), "not a readable zip", class = "shinysnap_format_error")
+  nomanifest <- withr::local_tempfile(fileext = ".zip")
+  writeLines("x", file.path(root, "other.txt"))
+  zip::zip(nomanifest, files = "other.txt", root = root, mode = "cherry-pick")
+  expect_error(snap_read(nomanifest), "no manifest.json", class = "shinysnap_format_error")
+})
+
+test_that("manifests that point outside the bundle or at missing files are refused", {
+  skip_if_not_installed("zip")
+  make_bundle <- function(manifest, extra = list()) {
+    staging <- withr::local_tempdir(.local_envir = parent.frame())
+    writeLines(manifest, file.path(staging, "manifest.json"))
+    for (rel in names(extra)) {
+      dir.create(dirname(file.path(staging, rel)), recursive = TRUE, showWarnings = FALSE)
+      writeLines(extra[[rel]], file.path(staging, rel))
+    }
+    path <- tempfile(fileext = ".zip")
+    zip::zip(path, files = list.files(staging, recursive = TRUE), root = staging, mode = "mirror")
+    path
+  }
+  record <- function(path) sprintf('{"format": 1, "attachments": {"u": {"$type": "file", "name": "a", "size": 1, "type": "t", "path": "%s"}}}', path)
+  expect_error(snap_read(make_bundle(record("attachments/u/../../x"))), "invalid bundle path", class = "shinysnap_format_error")
+  expect_error(snap_read(make_bundle(record("/etc/passwd"))), "invalid bundle path", class = "shinysnap_format_error")
+  expect_error(snap_read(make_bundle(record("objects/a"))), "invalid bundle path", class = "shinysnap_format_error")
+  expect_error(snap_read(make_bundle(record("attachments/u/missing"))), "not a file in the bundle", class = "shinysnap_format_error")
+  expect_error(snap_read(make_bundle(record("attachments/u"), list("attachments/u/a" = "x"))), "not a file", class = "shinysnap_format_error")
+  ok <- snap_read(make_bundle(record("attachments/u/a"), list("attachments/u/a" = "content")))
+  expect_identical(readLines(snap_attachment(ok, "u")), "content")
+
+  rds <- function(path) sprintf('{"format": 1, "values": {"v": {"$type": "rds", "class": ["x"], "path": "%s"}}}', path)
+  expect_warning(untrusted <- snap_read(make_bundle(rds("objects/1-v.rds"))), class = "shinysnap_untrusted")
+  expect_null(untrusted$values$v)
+  expect_error(snap_read(make_bundle(rds("attachments/1-v.rds")), trust = TRUE), "invalid bundle path", class = "shinysnap_format_error")
+  expect_error(snap_read(make_bundle(rds("objects/1-v.rds")), trust = TRUE), "not a file", class = "shinysnap_format_error")
+  broken <- make_bundle(rds("objects/1-v.rds"), list("objects/1-v.rds" = "not an rds"))
+  expect_error(snap_read(broken, trust = TRUE), "cannot be read", class = "shinysnap_format_error")
+  # An rds wrapper with a path in plain JSON (no bundle) is rejected.
+  expect_error(snap_unserialize(rds("objects/1-v.rds"), trust = TRUE), "requires reading a bundle", class = "shinysnap_format_error")
+  # File records outside a bundle decode with an unknown local path.
+  plain <- snap_unserialize(record("attachments/u/a"))
+  expect_identical(plain$attachments$u$name, "a")
+  expect_identical(plain$attachments$u$datapath, NA_character_)
+  expect_error(snap_unserialize('{"format": 1, "attachments": {"u": {"$type": "file", "name": "a"}}}'), "equal length", class = "shinysnap_format_error")
 })

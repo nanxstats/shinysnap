@@ -54,9 +54,9 @@ restore_json <- function(app, json, timeout = 20000) {
 }
 
 # Restore through an upload control and return the report.
-restore_upload <- function(app, id, snap, timeout = 20000) {
-  path <- tempfile(fileext = ".json")
-  snap_write(snap, path)
+restore_upload <- function(app, id, snap, timeout = 20000, format = "json") {
+  path <- tempfile(fileext = paste0(".", format))
+  snap_write(snap, path, format = format)
   before <- app$get_value(export = "reports")
   args <- list(path)
   names(args) <- id

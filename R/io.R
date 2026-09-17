@@ -92,7 +92,7 @@ encode_snapshot <- function(x, ctx) {
   )
   if (length(x$attachments)) {
     if (isTRUE(ctx$keep_attachments)) {
-      root$attachments <- encode_section(x$attachments, "attachments", ctx)
+      root$attachments <- encode_attachments(x$attachments)
     } else {
       message(sprintf(
         paste0(
@@ -105,6 +105,32 @@ encode_snapshot <- function(x, ctx) {
   }
   root$meta <- encode_section(x$meta, "meta", ctx)
   root
+}
+
+#' Encode attachment records for a bundle manifest
+#'
+#' Each record must already carry `path`, the archive-relative location the
+#' bundle writer copied the upload to.
+#'
+#' @noRd
+encode_attachments <- function(attachments) {
+  scalar_or_array <- function(v) {
+    v <- unname(v)
+    if (length(v) == 1L) v else json_arr(v)
+  }
+  out <- lapply(attachments, function(rec) {
+    # Built by hand: typed() takes a `type` argument, and the record has a
+    # `type` field (the MIME type) that must not be confused with "$type".
+    list(
+      "$type" = "file",
+      name = scalar_or_array(as.character(rec$name)),
+      size = scalar_or_array(as.double(rec$size)),
+      type = scalar_or_array(as.character(rec$type)),
+      path = scalar_or_array(as.character(rec$path))
+    )
+  })
+  names(out) <- names(attachments)
+  out
 }
 
 #' Encode one named section (`inputs`, `values`, ...) as an object
@@ -252,14 +278,25 @@ decode_section <- function(x, name, ctx) {
 #'
 #' `snap_write()` saves a snapshot; `snap_read()` loads one. The canonical
 #' format is JSON (see [snap_serialize()]): plain text, readable, diffable,
-#' and safe to open. The `"rds"` format stores the R object with `saveRDS()`;
-#' it is neither readable nor safe across versions, and reading it requires
-#' `trust = TRUE` because unserializing a file runs arbitrary code paths.
+#' and safe to open. The `"zip"` format is a *bundle*: a zip archive holding
+#' the same JSON as `manifest.json` plus the files of any `fileInput()`
+#' uploads (under `attachments/`) and, with `unsupported = "rds"`, opaque R
+#' objects (under `objects/`); it needs the zip package. The `"rds"` format
+#' stores the R object with `saveRDS()`; it is neither readable nor safe
+#' across versions, and reading it requires `trust = TRUE` because
+#' unserializing a file runs arbitrary code paths.
+#'
+#' Reading a bundle checks the archive for path traversal and caps its
+#' uncompressed size at `getOption("shinysnap.max_bundle_bytes", 100 * 1024^2)`
+#' bytes, then extracts it into a fresh temporary directory;
+#' [snap_attachment()] returns the local paths of the extracted uploads and
+#' bundled objects are decoded only with `trust = TRUE`.
 #'
 #' @param x A snapshot object.
 #' @param path The file path.
-#' @param format `"auto"` picks the format from the extension (`.json` or
-#'   `.rds`); otherwise the format to use regardless of the extension.
+#' @param format `"auto"` picks the format from the extension (`.json`,
+#'   `.zip`, or `.rds`); otherwise the format to use regardless of the
+#'   extension.
 #' @param pretty Pretty-print JSON (the default) or write one compact line.
 #' @param ... Passed on to [snap_serialize()] (`unsupported`, `verbose`).
 #' @param trust Decode embedded serialized R objects and allow the `"rds"`
@@ -277,7 +314,7 @@ decode_section <- function(x, name, ctx) {
 #' cat(readLines(path), sep = "\n")
 #' identical(snap_inputs(snap_read(path)), snap_inputs(snap))
 #' @export
-snap_write <- function(x, path, format = c("auto", "json", "rds"), pretty = TRUE, ...) {
+snap_write <- function(x, path, format = c("auto", "json", "zip", "rds"), pretty = TRUE, ...) {
   if (!is_string(path)) {
     snap_abort("`path` must be a single file path.")
   }
@@ -286,6 +323,7 @@ snap_write <- function(x, path, format = c("auto", "json", "rds"), pretty = TRUE
   x <- as_snapshot(x)
   switch(format,
     json = write_utf8(snap_serialize(x, pretty = pretty, ...), path),
+    zip = write_bundle(x, path, pretty = pretty, ...),
     rds = {
       x$producer <- snap_producer()
       x$created <- x$created %||% iso_now()
@@ -297,7 +335,7 @@ snap_write <- function(x, path, format = c("auto", "json", "rds"), pretty = TRUE
 
 #' @rdname snap_write
 #' @export
-snap_read <- function(path, format = c("auto", "json", "rds"), trust = FALSE,
+snap_read <- function(path, format = c("auto", "json", "zip", "rds"), trust = FALSE,
                       unknown_types = c("error", "keep"), ...) {
   if (!is_string(path)) {
     snap_abort("`path` must be a single file path.")
@@ -313,6 +351,7 @@ snap_read <- function(path, format = c("auto", "json", "rds"), trust = FALSE,
       read_utf8(path),
       trust = trust, unknown_types = unknown_types
     ),
+    zip = read_bundle(path, trust = trust, unknown_types = unknown_types),
     rds = {
       if (!isTRUE(trust)) {
         snap_abort(
@@ -336,6 +375,7 @@ format_from_path <- function(path) {
   if (identical(ext, tolower(basename(path)))) ext <- ""
   switch(ext,
     json = "json",
+    zip = "zip",
     rds = "rds",
     snap_abort(
       sprintf(

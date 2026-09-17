@@ -80,3 +80,30 @@ test_that("01-basic: a saved file restores every core input through the upload c
   }
   expect_identical(after$values$rv$note, "from file")
 })
+
+test_that("01-basic: a bundle keeps an uploaded file and restores through the upload control", {
+  skip_if_not_installed("zip")
+  app <- start_app("01-basic")
+  on.exit(app$stop())
+  csv <- tempfile("data-", fileext = ".csv")
+  writeLines(c("x,y", "1,2", "3,4"), csv)
+  app$upload_file(upload = csv)
+  app$set_inputs(text = "with upload", filename = "bundled")
+  path <- app$get_download("save_bundle")
+  expect_identical(basename(path), "bundled.zip")
+  bundle <- snap_read(path)
+  expect_identical(bundle$inputs$text, "with upload")
+  expect_false("upload" %in% names(bundle$inputs))
+  expect_identical(bundle$attachments$upload$name, basename(csv))
+  expect_identical(readLines(snap_attachment(bundle, "upload")), c("x,y", "1,2", "3,4"))
+
+  bundle$inputs$text <- "from bundle"
+  bundle$inputs$number <- 9L
+  report <- restore_upload(app, "restore", bundle, format = "zip")
+  expect_false(isTRUE(report$timed_out))
+  expect_all_restored(report)
+  expect_false("upload" %in% names(report$status))
+  vals <- app$get_values(input = TRUE)$input
+  expect_identical(vals$text, "from bundle")
+  expect_identical(vals$number, 9L)
+})

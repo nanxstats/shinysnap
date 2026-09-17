@@ -23,6 +23,7 @@ ui <- fluidPage(
       actionButton("go", "Go"),
       textInput("filename", "File name", "basic-state"),
       snap_download_button("save"),
+      snap_download_button("save_bundle", "Save bundle (zip)"),
       snap_file_input("restore")
     ),
     mainPanel(
@@ -41,6 +42,7 @@ server <- function(input, output, session) {
   snap_track(rv)
   observeEvent(input$go, rv$clicks <- rv$clicks + 1L)
   snap_download_handler("save", filename = reactive(input$filename))
+  snap_download_handler("save_bundle", filename = reactive(input$filename), format = "zip")
   snap_file_restore("restore")
 
   reports <- reactiveVal(list())

@@ -20,3 +20,8 @@
   `snap_is_restoring()`, `snap_restorer()` / `snap_restorers()` with built-in
   restorers for shiny, bslib, and shinyMatrix inputs, and
   `snap_file_input()` / `snap_file_restore()` complete the restore side.
+- The zip bundle format (`snap_write(format = "zip")`) keeps uploaded files
+  and, with `unsupported = "rds"`, opaque R objects next to the JSON
+  manifest; `snap_read()` validates archives before extracting them, and
+  `snap_attachment()` returns the extracted uploads. `snap_as_bookmark_url()`,
+  `snap_as_test_inputs()`, and `snap_diff()` round out the interop helpers.

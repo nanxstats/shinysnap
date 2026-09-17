@@ -29,13 +29,16 @@ difftime_units <- c("secs", "mins", "hours", "days", "weeks")
 #'
 #' @noRd
 codec_ctx <- function(unsupported = "error", verbose = FALSE, trust = FALSE,
-                      unknown_types = "error", keep_attachments = FALSE) {
+                      unknown_types = "error", keep_attachments = FALSE,
+                      bundle_dir = NULL) {
   ctx <- new.env(parent = emptyenv())
   ctx$unsupported <- unsupported
   ctx$verbose <- verbose
   ctx$trust <- trust
   ctx$unknown_types <- unknown_types
   ctx$keep_attachments <- keep_attachments
+  ctx$bundle_dir <- bundle_dir
+  ctx$n_objects <- 0L
   ctx$notes <- character()
   ctx$untrusted <- character()
   ctx
@@ -492,6 +495,16 @@ encode_unsupported <- function(x, path, ctx) {
       ctx, "Embedded `", path, "` (class ", cls,
       ") as an opaque R object; reading it requires `trust = TRUE`."
     )
+    if (!is.null(ctx$bundle_dir)) {
+      # In a bundle, opaque objects go to objects/<n>-<path>.rds.
+      ctx$n_objects <- ctx$n_objects + 1L
+      rel <- file.path("objects", sprintf(
+        "%d-%s.rds", ctx$n_objects, gsub("[^A-Za-z0-9._-]+", "_", path)
+      ))
+      dir.create(file.path(ctx$bundle_dir, "objects"), showWarnings = FALSE)
+      saveRDS(x, file.path(ctx$bundle_dir, rel))
+      return(typed("rds", class = json_arr(class(x)), path = rel))
+    }
     b64 <- jsonlite::base64_enc(serialize(x, NULL))
     b64 <- gsub("\n", "", b64, fixed = TRUE)
     return(typed("rds", class = json_arr(class(x)), base64 = b64))
@@ -660,6 +673,7 @@ decode_typed <- function(x, path, ctx) {
     data.frame = decode_data_frame(x, path, ctx),
     list = decode_list_wrapper(x, path, ctx),
     rds = decode_rds(x, path, ctx),
+    file = decode_file(x, path, ctx),
     decode_unknown_type(x, type, path, ctx)
   )
 }
@@ -1069,10 +1083,82 @@ decode_rds <- function(x, path, ctx) {
       }
     ))
   }
-  if (is_string_scalar(x[["path"]])) {
-    format_abort(path, "refers to a bundled object, which requires reading a bundle")
+  rel <- x[["path"]]
+  if (is_string_scalar(rel)) {
+    if (is.null(ctx$bundle_dir)) {
+      format_abort(path, "refers to a bundled object, which requires reading a bundle")
+    }
+    file <- bundle_file(ctx$bundle_dir, rel, path, prefix = "objects/")
+    return(tryCatch(
+      readRDS(file),
+      error = function(e) {
+        format_abort(path, "holds a bundled R object that cannot be read")
+      }
+    ))
   }
-  format_abort(path, "is an \"rds\" wrapper without \"base64\"")
+  format_abort(path, "is an \"rds\" wrapper without \"base64\" or \"path\"")
+}
+
+#' Decode a `file` record (an attachment in a bundle manifest)
+#'
+#' The record decodes to the same shape `snap_take()` produces:
+#' `list(name, size, type, datapath)`, with `datapath` pointing into the
+#' extracted bundle, or `NA` when the record is read outside a bundle.
+#'
+#' @noRd
+decode_file <- function(x, path, ctx) {
+  field <- function(key, storage) {
+    v <- x[[key]]
+    if (is.null(v)) {
+      return(vector(storage, 0L))
+    }
+    if (!is.list(v)) v <- list(v)
+    if (!all(vapply(v, is_json_scalar, logical(1)))) {
+      format_abort(path, sprintf("must have scalars or an array in \"%s\"", key))
+    }
+    decode_elements(v, storage, path)
+  }
+  name <- field("name", "character")
+  size <- field("size", "double")
+  type <- field("type", "character")
+  rel <- field("path", "character")
+  n <- length(name)
+  if (n == 0L || length(rel) != n || length(size) != n || length(type) != n) {
+    format_abort(path, "must have \"name\", \"size\", \"type\", and \"path\" of equal length")
+  }
+  datapath <- rep(NA_character_, n)
+  if (!is.null(ctx$bundle_dir)) {
+    datapath <- vapply(rel, function(r) {
+      bundle_file(ctx$bundle_dir, r, path, prefix = "attachments/")
+    }, character(1), USE.NAMES = FALSE)
+  }
+  list(name = name, size = size, type = type, datapath = datapath)
+}
+
+#' Resolve a manifest path inside an extracted bundle, safely
+#'
+#' The path must be relative, must not climb out of the bundle, must live
+#' under `prefix`, and must exist as a regular file.
+#'
+#' @noRd
+bundle_file <- function(dir, rel, path, prefix) {
+  bad <- !is_string(rel) || !nzchar(rel) || grepl("^([A-Za-z]:)?[/\\]", rel) ||
+    grepl("\\", rel, fixed = TRUE) || !startsWith(rel, prefix) ||
+    any(strsplit(rel, "/", fixed = TRUE)[[1]] %in% c("..", "", "."))
+  if (bad) {
+    format_abort(path, sprintf("refers to an invalid bundle path \"%s\"", rel))
+  }
+  file <- file.path(dir, rel)
+  info <- file.info(file, extra_cols = FALSE)
+  if (is.na(info$isdir) || isTRUE(info$isdir) || nzchar(Sys.readlink(file))) {
+    format_abort(path, sprintf("refers to \"%s\", which is not a file in the bundle", rel))
+  }
+  root <- normalizePath(dir, winslash = "/", mustWork = TRUE)
+  real <- normalizePath(file, winslash = "/", mustWork = TRUE)
+  if (!startsWith(real, paste0(root, "/"))) {
+    format_abort(path, sprintf("refers to \"%s\", which lies outside the bundle", rel))
+  }
+  real
 }
 
 #' Unknown `$type`: error, or keep the raw node

@@ -111,3 +111,26 @@ test_that("resolve_filename() handles functions, reactives, and empty values", {
   expect_identical(resolve_filename(NA_character_), "")
   expect_identical(resolve_filename(c("first", "second")), "first")
 })
+
+test_that("snap_download_handler() can write a bundle", {
+  skip_if_not_installed("zip")
+  server <- function(input, output, session) {
+    snap_enable(app = "dl", version = "1")
+    snap_download_handler("bundle", filename = "my state", format = "zip")
+    NULL
+  }
+  shiny::testServer(server, {
+    up <- withr::local_tempfile(fileext = ".csv")
+    writeLines("a,b", up)
+    session$setInputs(n = 1L, upload = data.frame(name = "data.csv", size = 3L, type = "text/csv", datapath = up))
+    path <- output$bundle
+    expect_identical(basename(path), "my_state.zip")
+    back <- snap_read(path)
+    expect_identical(back$inputs, list(n = 1L))
+    expect_identical(readLines(snap_attachment(back, "upload")), "a,b")
+  })
+})
+
+test_that("snap_file_input() accepts json and zip by default", {
+  expect_match(as.character(snap_file_input("r")), "accept=\".json,.zip\"", fixed = TRUE)
+})

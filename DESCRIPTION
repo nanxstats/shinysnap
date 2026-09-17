@@ -28,13 +28,15 @@ Imports:
 Suggests:
     bslib,
     chromote,
+    httpuv,
     knitr,
     later,
     rmarkdown,
     shinyMatrix,
     shinytest2,
     testthat (>= 3.0.0),
-    withr
+    withr,
+    zip
 VignetteBuilder: knitr
 Config/testthat/edition: 3
 Roxygen: list(markdown = TRUE)
