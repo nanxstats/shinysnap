@@ -17,15 +17,13 @@ Initial release.
 ## Files
 
 - The canonical format is JSON: doubles written with the fewest digits that
-  round-trip, typed wrappers for what JSON cannot say, deterministic
-  layout. `snap_serialize()`, `snap_unserialize()`, `snap_write()`, and
-  `snap_read()` convert; `snap_write(format = "zip")` writes a bundle that
-  keeps uploaded files and, with `unsupported = "rds"`, opaque R objects.
-  Bundles are validated before extraction; embedded objects and `.rds`
-  files need `trust = TRUE`.
-- `snap_download_button()`, `snap_download_handler()`,
-  `snap_file_input()`, and `snap_file_restore()` replace the download and
-  upload boilerplate.
+  round-trip, typed wrappers for what JSON cannot say, deterministic layout.
+  `snap_serialize()`, `snap_unserialize()`, `snap_write()`, and `snap_read()`
+  convert; `snap_write(format = "zip")` writes a bundle that keeps uploaded
+  files and, with `unsupported = "rds"`, opaque R objects. Bundles are validated
+  before extraction; embedded objects and `.rds` files need `trust = TRUE`.
+- `snap_download_button()`, `snap_download_handler()`, `snap_file_input()`, and
+  `snap_file_restore()` replace the download and upload boilerplate.
 
 ## Restore
 
