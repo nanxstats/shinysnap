@@ -1,120 +1,47 @@
 # AGENTS.md
 
-Guidelines for AI agents (and humans) working on shinysnap. Read this
-before changing code; it records the decisions and the traps that cost
-real debugging time while the package was built.
+Guidelines for AI agents (and humans) working on shinysnap: how to work in
+this repository, what to verify, and the traps that cost real debugging time
+while the package was built.
 
-## What this package is
-
-shinysnap takes a *snapshot* of a running Shiny app (input values plus
-registered server-side values), writes it to a readable JSON file, and
-restores it later into another session without a page reload and without
-`enableBookmarking()`. The central noun is the snapshot in the virtual
-machine sense. Never confuse it, in code or prose, with snapshot testing
-(`expect_snapshot`, `_snaps/`) or screenshots; never export anything named
-`snapshot*` (that family belongs to shiny's test machinery). All exports
-use the `snap_` prefix, snake_case.
-
-The design brief that produced the package is `deps-src/bootstrap.md`.
-The whole `deps-src/` tree (the brief, vendored CRAN sources of shiny,
-bslib, shinyMatrix, zmij, jsonlite, zip, prior-art packages) is gitignored
-and regenerated with `okr sync`. Verify claims about Shiny internals against
+The architecture, the data flows, and the reasons behind the design
+decisions are in `DESIGN.md`. Read it before changing the codec, the
+restore transaction, or the client script; this file does not repeat it.
+The brief that produced the package is `deps-src/bootstrap.md`. The whole
+`deps-src/` tree (the brief, vendored CRAN sources of shiny, bslib,
+shinyMatrix, zmij, jsonlite, zip, prior-art packages) is gitignored and
+regenerated with `okr sync`. Verify claims about Shiny internals against
 those sources, not against memory.
 
-## Ground rules
+## Rules for changes
 
-- Never use `shiny:::` in package code. Everything needed is public:
-  `session$sendCustomMessage()`, `session$restoreContext`, `setSerializer()`,
-  `getBookmarkExclude()`, input bindings and `receiveMessage()`, the
-  `shiny:bound` event. Feature-detect and degrade when something is missing
-  (`MockShinySession$restoreContext` is `NULL`).
+- Never use `shiny:::` in package code. Feature-detect and degrade when
+  something is missing (`MockShinySession$restoreContext` is `NULL`).
 - Never `unserialize()`/`readRDS()` user-supplied data unless the caller
-  passed `trust = TRUE`. JSON must be safe to open.
-- No timers or sleeps on the R side to wait for the UI. Ordering is solved
-  by the client-side apply-on-bind queue and by `restoreInput()`.
-- Every read of `input` inside `snap_*()` functions is wrapped in
-  `shiny::isolate()`; callers must never pick up reactive dependencies.
-- Messages to the client go through `session$rootScope()` with fully
-  namespaced ids. `sendInputMessage()` namespaces ids inside modules;
-  `sendCustomMessage()` does not.
-- Hidden internal inputs are prefixed `.shinysnap_` (`.shinysnap_ready`,
-  `.shinysnap_inventory`, `.shinysnap_result`). They are marked
-  unserializable so they never leak into native bookmark URLs.
-- Never silently drop anything on restore: every input ends up in the
-  report with a status.
+  passed `trust = TRUE`. JSON and bundles must be safe to open; validate
+  archive entries before extracting.
+- No timers or sleeps on the R side to wait for the UI.
+- Wrap every read of `input` inside `snap_*()` functions in
+  `shiny::isolate()`.
+- Send messages to the client through `session$rootScope()` with fully
+  namespaced ids; detect modules with `inherits(session, "session_proxy")`.
+- Keep hidden internal inputs prefixed `.shinysnap_` and marked
+  unserializable.
+- Every input that enters a restore ends up in the report with a status;
+  nothing is dropped silently.
+- Never return a promise from an example or helper observer; end with
+  `NULL` when the last expression is a `promises::then()`/`catch()`. See
+  "The handle instead of a promise" in `DESIGN.md`.
+- The JSON format is normative in `vignettes/format-spec.Rmd`. A change to
+  the codec is a change to that vignette, and an incompatible change bumps
+  `format`.
 - Every claim about a binding's wire format is backed by a browser test
-  that runs the real binding, not by reading docs.
-
-## Architecture map
-
-| file | role |
-|---|---|
-| `R/codec.R` | `encode_value()`/`decode_value()`: R values to a JSON-ready tree and back; typed wrappers; bundle object and file records |
-| `R/io-json.R` | hand-written JSON writer (doubles via `zmij::format_double()`, deterministic layout) and reader (`jsonlite::parse_json`) |
-| `R/io.R`, `R/io-bundle.R` | `snap_serialize()`/`snap_unserialize()`, `snap_write()`/`snap_read()`, the zip bundle |
-| `R/snapshot.R` | the `shinysnap` object, `snap_take()`, accessors, `snap_diff()` |
-| `R/controller.R`, `R/enable.R` | per-session R6 controller in `session$rootScope()$userData$.shinysnap`; `snap_enable()`; dependency injection |
-| `R/restore.R` | `snap_restore()`: the transaction, report class, cancellation, `restoreInput()` priming |
-| `R/restorers.R`, `R/restorers-builtin.R` | restorer registry and the built-in payload table |
-| `R/hooks.R`, `R/track.R`, `R/exclude.R` | callback manager, save/restore hooks (module-scoped), tracked `reactiveValues`, exclusion rules |
-| `R/ui.R` | download/upload helpers |
-| `R/interop.R` | bookmark URL, `testServer()` inputs, attachments |
-| `inst/www/shinysnap.js` | the client script: inventory half and restore half; plain ES2017, no build step |
-| `inst/examples/0*-*/app.R` | runnable apps used by the browser tests; keep their terminology generic |
-
-## Verified facts that differ from the brief or from intuition
-
-- **shinyMatrix registers its binding without a name**, so `binding.name`
-  is undefined. The inventory falls back to `binding.getType(el)`, which
-  yields `shinyMatrix.matrixNumeric` / `shinyMatrix.matrixCharacter`;
-  restorers are keyed on those.
-- **`MockShinySession` reports the namespace prefix `mock-session-` at the
-  root.** Module detection must use `inherits(session, "session_proxy")`,
-  never `nzchar(session$ns(""))`.
-- **An empty `fileInput()` has value `NULL`.** File inputs are recognised
-  through the inventory binding `shiny.fileInputBinding`, with the data
-  frame shape (`name, size, type, datapath`) as fallback.
-- **Shiny sends a newly bound input's initial value after the `shiny:bound`
-  event** (`bindAll()` awaits `_bindAll()` then calls `setInput()`). Applies
-  from the bound handler must be deferred with `setTimeout(fn, 0)`; a
-  microtask is too early.
-- **Returning a promise from an observer stalls the restore.** Shiny uses
-  `is.promising()` on an observer's return value and holds the flush until
-  it resolves; our promise resolves only after the client sees the page go
-  quiet, which needs the flush. `snap_restore()` therefore returns a
-  `shinysnap_restore` handle (`$txn`, `$promise`), not a promise, and
-  example observers end with `NULL` when their last expression is a
-  `promises::then()`/`catch()`.
-- **`radioButtons` wants a scalar** (`setValue()` calls `$escape(value)`,
-  which needs a string); `checkboxGroupInput`/`selectInput` accept arrays.
-  The wrong shape shows up as a browser `n.replace is not a function`
-  failure.
-- **Date sliders take milliseconds and report `"YYYY-MM-DD"` strings**, so
-  restore records carry an explicit `expect` value for the client-side
-  comparison; the default `expect` is the message's `value`.
-- **shiny's `toJSON()` turns named atomic vectors into objects** (with a
-  jsonlite warning); restorer payloads strip names.
-- **`%OS3` truncates, not rounds**: the codec rounds POSIXct to
-  milliseconds itself and rebuilds instants as `whole + fraction`, the way
-  R does, so millisecond instants round-trip exactly.
-- **`zip::zip(mode = "cherry-pick")` stores nested files under their base
-  names**; the bundle writer uses `mode = "mirror"`. **`zip::unzip()`
-  follows `../` entries and writes outside `exdir`**, so entries are
-  validated via `zip_list()` before extraction.
-- **`typed(type, ...)` has a formal named `type`**; a wrapper with a `type`
-  field (the attachment record's MIME type) must be built by hand.
-- **Shiny's URL encoder is `httpuv::encodeURIComponent`** (JavaScript
-  rules); `utils::URLencode` differs. `MockShinySession$clientData` reports
-  a numeric `url_port`.
-- **The restore settles on the client's quiet period**, which normally beats
-  the timeout; `timed_out` is `TRUE` only when the app stays busy. A
-  never-appearing input is `missing` at the normal settle. A deterministic
-  browser test of the timeout branch is not practical; it is covered
-  server-side.
-- **Outputs on hidden tabs are suspended**, so dynamic UI on an inactive tab
-  does not render and its inputs stay `missing` unless the app sets
-  `outputOptions(suspendWhenHidden = FALSE)` or the snapshot includes the
-  tab id.
+  that runs the real binding. When adding a binding to the built-in restorer
+  table, add it to an example app and assert its round trip in a browser
+  test.
+- Never export anything named `snapshot*` (shiny's test machinery owns that
+  family); all exports use the `snap_` prefix. `tests/testthat/test-namespace.R`
+  enforces it.
 
 ## Workflow
 
@@ -139,7 +66,8 @@ Practicalities:
 - When the R side sends a message but nothing happens in the browser,
   inspect `window.shinysnap.transaction()` and set
   `window.shinysnap.debug = true` (or `snap_enable(verbose = TRUE)`) to get
-  per-input console logs; `app$get_logs()` shows them.
+  per-input console logs; `app$get_logs()` shows them. A page stuck in
+  `shiny-busy` after a restore usually means an observer returned a promise.
 - `devtools::test()` runs the browser suites (about a minute each); use
   `filter =` for a fast loop. Names: `codec`, `io`, `snapshot`, `take`,
   `ui`, `restore-server`, `restorers`, `interop`, `namespace`,
@@ -149,6 +77,8 @@ Practicalities:
   `builtin_restorers` captured the closures at build time; compare
   behavior, not identity. `restorers-builtin.R` shows falsely low coverage
   for the same reason; real coverage is about 96 percent.
+- `pkgdown::check_pkgdown()` must pass after adding an exported topic; the
+  reference index in `_pkgdown.yml` lists topics by group.
 
 ## Testing conventions
 
@@ -157,7 +87,7 @@ Practicalities:
   `.shinysnap_inventory` with `session$setInputs()`, and answer a restore by
   setting `.shinysnap_result` to `list(txn, elapsed, timedOut, results)`.
   `settle_promise()` in `helper-promise.R` drives the event loop until a
-  promise settles.
+  promise (or a restore handle) settles.
 - Browser tests use the example apps under `inst/examples/` through
   shinytest2 with `variant = NULL` and read state with
   `exportTestValues()` (`snapshot` as JSON text, `reports` as lists) rather
@@ -165,9 +95,10 @@ Practicalities:
   (`ignore = list(<previous value>)`); never `Sys.sleep()`. Helpers live in
   `helper-browser.R` (`start_app()`, `wait_for_inventory()`,
   `restore_json()`, `restore_upload()`, `expect_all_restored()`).
-- When adding a binding to the built-in restorer table, add it to an example
-  app and assert its round trip in a browser test; the payload shape is not
-  something to reason about from docs.
+- A restore settles on the client's quiet period, which normally beats the
+  timeout, so a never-appearing input is `missing` with `timed_out = FALSE`.
+  Do not write a browser test that expects a timeout; the timeout branch is
+  covered server-side.
 
 ## Coding and documentation conventions
 
@@ -186,6 +117,23 @@ Practicalities:
 - Prose: "snapshot file", "saved state", "take/restore a snapshot"; avoid
   "snap" as a noun. Example apps and documentation use generic terms
   (models, weights, preferences).
-- The JSON format is normative in `vignettes/format-spec.Rmd`; a change to
-  the codec is a change to that vignette, and an incompatible one bumps
-  `format`.
+
+## Traps that are easy to reintroduce
+
+Each of these is explained in `DESIGN.md`; this is the checklist.
+
+- `radioButtons` wants a scalar value; `checkboxGroupInput` and
+  `selectInput` accept arrays. The wrong shape shows up in the browser as
+  `n.replace is not a function`.
+- Applies from the `shiny:bound` handler must be deferred with
+  `setTimeout(fn, 0)`, or the element's initial value overwrites the
+  restored one.
+- `typed(type, ...)` has a formal named `type`; a wrapper with a `type`
+  field (the attachment record) must be built by hand.
+- `zip::zip(mode = "cherry-pick")` stores nested files under their base
+  names; the bundle writer uses `mode = "mirror"`.
+- shiny's `toJSON()` turns named atomic vectors into objects (with a
+  warning); restorer payloads strip names.
+- `MockShinySession$clientData` reports a numeric `url_port`, and its
+  namespace prefix is `mock-session-` even at the root.
+- R's `%OS3` truncates; the codec rounds POSIXct to milliseconds itself.
