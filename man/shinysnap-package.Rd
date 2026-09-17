@@ -6,8 +6,37 @@
 \alias{shinysnap-package}
 \title{shinysnap: Save and Restore the State of 'shiny' Applications}
 \description{
-What the package does (one paragraph, 2+ sentences).
+shinysnap takes a \emph{snapshot} of a running app, that is, the current input
+values plus any server-side values you register, writes it to a plain JSON
+file, and restores it later into a different session without a page reload
+and without bookmarking.
+
+The word "snapshot" is used here in the sense of a virtual machine or file
+system snapshot: a saved state that can be written to a file, shared, and
+restored later. It has nothing to do with snapshot \emph{testing} (the
+\code{expect_snapshot} functions of testthat and shinytest2, or testthat's
+\verb{_snaps/} directories) and nothing to do with screenshots.
 }
+\section{The snapshot object}{
+
+A snapshot is a plain list of class \code{shinysnap} with these fields:
+\itemize{
+\item \code{format}: the file format version (an integer).
+\item \code{app}: a list with \code{name} and \code{version} of the app (each may be \code{NULL}).
+\item \code{created}: an ISO 8601 UTC timestamp of when the state was captured.
+\item \code{producer}: versions of shinysnap, shiny, and R that wrote the file.
+\item \code{inputs}: a named list of input values, keyed by fully namespaced ids.
+\item \code{values}: a named list of server-side values.
+\item \code{bindings}: a named character vector mapping input ids to the name of
+the client-side input binding that produced them.
+\item \code{attachments}: file records, used by the bundle format.
+\item \code{meta}: free-form, user-supplied metadata.
+}
+
+Use \code{\link[=snap_serialize]{snap_serialize()}} and \code{\link[=snap_unserialize]{snap_unserialize()}} to convert between the
+object and its JSON text.
+}
+
 \seealso{
 Useful links:
 \itemize{
