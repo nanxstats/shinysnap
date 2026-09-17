@@ -13,7 +13,6 @@ gitignore = true
 agents-file = false
 
 [packages]
-shiny = "*"
 bslib = "*"
 shinyMatrix = "*"
 shinystate = "*"
@@ -34,6 +33,8 @@ jsonlite = "*"
 withr = "*"
 zip = "*"
 zmij = "*"
+httpuv = "*"
 
 [references]
+shiny = "rstudio/shiny"
 shinyURL = "aoles/shinyURL"

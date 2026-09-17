@@ -17,12 +17,9 @@ use the `snap_` prefix, snake_case.
 
 The design brief that produced the package is `deps-src/bootstrap.md`.
 The whole `deps-src/` tree (the brief, vendored CRAN sources of shiny,
-bslib, shinyMatrix, zmij, jsonlite, zip, prior-art packages, and the shiny
-GitHub checkout with `srcts/` at `deps-src/shiny-main/`) is gitignored and
-regenerated with `okr sync`. Verify claims about Shiny internals against
-those sources, not against memory: the CRAN tarball has no `srcts/`, so
-read the TypeScript in `deps-src/shiny-main/srcts/` and cross-check the
-compiled `deps-src/shiny/inst/www/shared/shiny.js`.
+bslib, shinyMatrix, zmij, jsonlite, zip, prior-art packages) is gitignored
+and regenerated with `okr sync`. Verify claims about Shiny internals against
+those sources, not against memory.
 
 ## Ground rules
 
@@ -150,7 +147,7 @@ Practicalities:
   `browser-02-dynamic-ui`.
 - Under `covr`, `identical()` against `restorer_*` functions fails because
   `builtin_restorers` captured the closures at build time; compare
-  behaviour, not identity. `restorers-builtin.R` shows falsely low coverage
+  behavior, not identity. `restorers-builtin.R` shows falsely low coverage
   for the same reason; real coverage is about 96 percent.
 
 ## Testing conventions
@@ -188,8 +185,7 @@ Practicalities:
   `snap_abort()`/`snap_warn()` and test with `expect_error(class = )`.
 - Prose: "snapshot file", "saved state", "take/restore a snapshot"; avoid
   "snap" as a noun. Example apps and documentation use generic terms
-  (models, weights, preferences), not the vocabulary of the app that
-  motivated the package.
+  (models, weights, preferences).
 - The JSON format is normative in `vignettes/format-spec.Rmd`; a change to
   the codec is a change to that vignette, and an incompatible one bumps
   `format`.

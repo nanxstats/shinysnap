@@ -2,8 +2,8 @@ version = 2
 okr-version = "0.1.10"
 generated = "2026-09-16T00:00:00Z"
 snapshot = "2026-09-16"
-config-digest = "sha256:3292a47e18bf626c094c3821c88328a4412bc4ca3ae1dfc7196d5ff3b0f1edce"
-environment-digest = "sha256:365c4cd0970b85851c0b891b0616deeadf6126cb0f8ad30d5fae8a7066627dac"
+config-digest = "sha256:fbc2bd78c42153b6f310359bdcfe205073c0f720f8e97e805ba42e6eae610823"
+environment-digest = "sha256:e2d663762d6bb204932b553d9027577eaf218a5db1376e3559b239d929d6e4b0"
 
 [[package]]
 name = "R6"
@@ -78,6 +78,15 @@ tree-digest = "sha256:9fd497a95b004ef0c04af1b149cbb4c083c26349aea9c4b8a610b33350
 license = "GPL (>= 2)"
 
 [[package]]
+name = "httpuv"
+version = "1.6.17"
+source = "cran"
+url = "https://packagemanager.posit.co/cran/2026-09-16/src/contrib/httpuv_1.6.17.tar.gz"
+fetch-method = "tarball"
+tree-digest = "sha256:253d255c2ff74ec275a14ddb4c3e2ecc574a5ab6edd31682b55bfbe3d250fff4"
+license = "GPL (>= 2) | file LICENSE"
+
+[[package]]
 name = "jsonlite"
 version = "2.0.0"
 source = "cran"
@@ -111,15 +120,6 @@ source = "cran"
 url = "https://packagemanager.posit.co/cran/2026-09-16/src/contrib/rewind_0.2.0.tar.gz"
 fetch-method = "tarball"
 tree-digest = "sha256:d7998f9955026cf4346205dc8e8dacc57a2af93278761ab0c13fcfca8badec63"
-license = "MIT + file LICENSE"
-
-[[package]]
-name = "shiny"
-version = "1.14.0"
-source = "cran"
-url = "https://packagemanager.posit.co/cran/2026-09-16/src/contrib/shiny_1.14.0.tar.gz"
-fetch-method = "tarball"
-tree-digest = "sha256:0cc66971554e504be56df39bfcd1396d3a9d7082741f7cd01d13ae5e5abf79b2"
 license = "MIT + file LICENSE"
 
 [[package]]
@@ -193,6 +193,14 @@ url = "https://packagemanager.posit.co/cran/2026-09-16/src/contrib/zmij_0.1.0.ta
 fetch-method = "tarball"
 tree-digest = "sha256:6f63e989d778503dcb2ddf8408686a96a36f27017c9f9688d2621110ecb61246"
 license = "MIT + file LICENSE"
+
+[[reference]]
+name = "shiny"
+source = "github::rstudio/shiny"
+commit = "81844600fc15f1952838546faa6699d0506ce7f9"
+fetch-method = "forge-tarball"
+tree-digest = "sha256:09bbe9fa1799680e98a9c904a21cb23a2545ed81f5a6146402446a5385c6263c"
+license = "LICENSE"
 
 [[reference]]
 name = "shinyURL"
