@@ -1,3 +1,11 @@
+# shinysnap (development version)
+
+- The README, release notes, vignettes, `AGENTS.md`, and `DESIGN.md` now
+  use plainer language, shorter sentences, and clearer explanations.
+  Hyphenated phrases in prose have been rewritten, and contributor guidance
+  now describes the writing style, with examples from ellmer, testthat,
+  and shinychat. The local source references now include testthat.
+
 # shinysnap 0.1.0
 
 Initial release.
