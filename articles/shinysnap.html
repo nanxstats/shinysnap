@@ -74,27 +74,26 @@
       <img src="../logo.png" class="logo" alt=""><h1>Get started with shinysnap</h1>
             
       
-      <small class="dont-index">Source: <a href="https://github.com/nanxstats/shinysnap/blob/v0.1.0/vignettes/shinysnap.Rmd" class="external-link"><code>vignettes/shinysnap.Rmd</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/nanxstats/shinysnap/blob/main/vignettes/shinysnap.Rmd" class="external-link"><code>vignettes/shinysnap.Rmd</code></a></small>
       <div class="d-none name"><code>shinysnap.Rmd</code></div>
     </div>
 
     
     
-<p>shinysnap lets users of a Shiny app save their work and pick it up
-later: it takes a <em>snapshot</em> of the running app (the input values
-plus any server-side values you register), writes it to a plain JSON
-file that can be shared and kept under version control, and restores it
-into another session without a page reload and without
+<p>shinysnap lets users save their work in a Shiny app and return to it
+later. A <em>snapshot</em> contains the app’s input values and any
+values you choose to keep from the server. Users can download it as a
+JSON file, share it, and upload it to restore their work in another
+session. The app stays open throughout the restore. You don’t need
 <code><a href="https://rdrr.io/pkg/shiny/man/enableBookmarking.html" class="external-link">shiny::enableBookmarking()</a></code>.</p>
-<p>The word “snapshot” is used in the sense of a virtual machine or file
-system snapshot: a saved state you can write to a file, share, and
-restore later. It has nothing to do with snapshot <em>testing</em>
-(<code>expect_snapshot</code> in testthat and shinytest2) or with
-screenshots.</p>
+<p>Here, a snapshot means a copy of the app’s state. Snapshot tests in
+testthat and shinytest2 serve a different purpose: they record output to
+check for unexpected changes. shinysnap does not take screenshots.</p>
 <div class="section level2">
 <h2 id="a-minimal-app">A minimal app<a class="anchor" aria-label="anchor" href="#a-minimal-app"></a>
 </h2>
-<p>Two UI helpers and two server calls are all it takes:</p>
+<p>Add a download button and a file input to the UI, then connect them
+to handlers in the server function:</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://shiny.posit.co/" class="external-link">shiny</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://nanx.me/shinysnap/">shinysnap</a></span><span class="op">)</span></span>
@@ -123,21 +122,20 @@ screenshots.</p>
 <span><span class="op">}</span></span>
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/shinyApp.html" class="external-link">shinyApp</a></span><span class="op">(</span><span class="va">ui</span>, <span class="va">server</span><span class="op">)</span></span></code></pre></div>
-<p>Clicking <strong>Save state</strong> downloads a <code>.json</code>
-file with every input that is currently on the page. Uploading that file
-later, in any session, puts the app back into that state: the select is
-applied first, the dynamic UI it controls re-renders, and the inputs
-inside it receive their values as soon as they exist. You never write
-timing code.</p>
+<p>Click <strong>Save state</strong> to download a <code>.json</code>
+file with the current input values. Upload it later to restore those
+values in the same app. For example, a snapshot with
+<code>model = "complex"</code> selects that model, which creates the
+<code>k</code> slider. The slider then receives its saved value. You
+don’t need to add delays to wait for it to appear.</p>
 </div>
 <div class="section level2">
 <h2 id="the-file">The file<a class="anchor" aria-label="anchor" href="#the-file"></a>
 </h2>
-<p>Snapshot files are meant to be read by people. Numbers are written
-with the fewest digits that read back to the same value, and everything
-JSON cannot express directly (dates, matrices, <code>NA</code>, the type
-of an empty vector) uses a small typed wrapper. This is what a file
-looks like:</p>
+<p>You can read snapshot files in a text editor. Numbers use the fewest
+digits needed to preserve their value. Values that JSON cannot represent
+directly, such as dates, matrices, <code>NA</code>, and empty vectors,
+include extra fields that record their type. Here’s an example:</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://nanx.me/shinysnap/">shinysnap</a></span><span class="op">)</span></span>
 <span></span>
@@ -170,8 +168,8 @@ looks like:</p>
 <span><span class="co">#&gt;   "bindings": {},</span></span>
 <span><span class="co">#&gt;   "meta": {}</span></span>
 <span><span class="co">#&gt; }</span></span></code></pre></div>
-<p>Reading it back gives the same R values, so hand-editing a file and
-restoring it is a supported workflow:</p>
+<p>Reading the file gives you the same R values. You can also edit the
+file in a text editor before restoring it:</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">text</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/snap_serialize.html">snap_serialize</a></span><span class="op">(</span><span class="va">snap</span><span class="op">)</span></span>
 <span><span class="va">back</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/snap_serialize.html">snap_unserialize</a></span><span class="op">(</span><span class="va">text</span><span class="op">)</span></span>
@@ -188,30 +186,31 @@ restoring it is a supported workflow:</p>
 </h2>
 <ul>
 <li>
-<strong>Inputs</strong> that are on the page, by fully namespaced
-id. Values of inputs whose dynamic UI has been removed are dropped, so
-the file describes the UI as the user saw it. Action buttons, passwords,
-and file uploads are never stored as input values (uploads can travel in
-a zip bundle, see <code><a href="../reference/snap_write.html">snap_write()</a></code>).</li>
+<strong>Inputs</strong> that are on the page, identified by their
+full ids, including any module prefixes. Inputs whose UI has been
+removed are left out. Action buttons, passwords, and file uploads are
+never stored as input values. You can include uploaded files in a zip
+bundle with <code><a href="../reference/snap_write.html">snap_write()</a></code>.</li>
 <li>
 <strong>Values</strong> from the <code>reactiveValues</code> you
 register with <code><a href="../reference/snap_track.html">snap_track()</a></code>, plus whatever your
 <code><a href="../reference/snap_on_save.html">snap_on_save()</a></code> hooks add.</li>
-<li>The app name and version, so a restore can refuse files from another
-app and migrate files from an older version.</li>
+<li>The <strong>app name and version</strong>, so shinysnap can reject
+files from another app and run your migration code for files from an
+older version.</li>
 </ul>
 </div>
 <div class="section level2">
-<h2 id="the-before-and-after">The before and after<a class="anchor" aria-label="anchor" href="#the-before-and-after"></a>
+<h2 id="replacing-your-own-restore-code">Replacing your own restore code<a class="anchor" aria-label="anchor" href="#replacing-your-own-restore-code"></a>
 </h2>
-<p>Apps that save state by hand usually end up with something like this:
-<code>reactiveValuesToList(input)</code> into an <code>.rds</code> file,
-and on upload a loop of <code>session$sendInputMessage()</code> calls, a
-special case for matrix inputs, and, because inputs inside
-<code><a href="https://rdrr.io/pkg/shiny/man/renderUI.html" class="external-link">renderUI()</a></code> do not exist yet when the first messages are
-sent, staggered delays.</p>
+<p>If you already save your app’s state with
+<code>reactiveValuesToList(input)</code> and an <code>.rds</code> file,
+your restore code may look something like this. It sends each saved
+value back to its input, handles matrices separately, and provides
+defaults for fields added since the file was saved. It also adds delays
+to wait for inputs created by <code><a href="https://rdrr.io/pkg/shiny/man/renderUI.html" class="external-link">renderUI()</a></code>.</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Before: a hand-rolled restore (abridged)</span></span>
+<code class="sourceCode R"><span><span class="co"># Before: restoring values manually (some code omitted)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/observeEvent.html" class="external-link">observeEvent</a></span><span class="op">(</span><span class="va">input</span><span class="op">$</span><span class="va">restore_file</span>, <span class="op">{</span></span>
 <span>  <span class="va">saved</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/readRDS.html" class="external-link">readRDS</a></span><span class="op">(</span><span class="va">input</span><span class="op">$</span><span class="va">restore_file</span><span class="op">$</span><span class="va">datapath</span><span class="op">)</span></span>
 <span>  <span class="va">is_matrix</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">vapply</a></span><span class="op">(</span><span class="va">saved</span><span class="op">$</span><span class="va">inputs</span>, <span class="va">is.matrix</span>, <span class="fu"><a href="https://rdrr.io/r/base/logical.html" class="external-link">logical</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span><span class="op">)</span></span>
@@ -235,8 +234,8 @@ sent, staggered delays.</p>
 <span>    <span class="co"># ... another wave for the inputs that appear after those ...</span></span>
 <span>  <span class="op">}</span><span class="op">)</span></span>
 <span><span class="op">}</span><span class="op">)</span></span></code></pre></div>
-<p>With shinysnap, the same app needs no delays, no matrix special case,
-and no per-field fallbacks:</p>
+<p>With shinysnap, you register the values to save and provide functions
+to check files and update values from older versions:</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># After</span></span>
 <span><span class="fu"><a href="../reference/snap_enable.html">snap_enable</a></span><span class="op">(</span>app <span class="op">=</span> <span class="st">"myapp"</span>, version <span class="op">=</span> <span class="st">"2.4.0"</span>, exclude <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"^btn_"</span>, <span class="st">"^nav$"</span><span class="op">)</span><span class="op">)</span></span>
@@ -255,21 +254,20 @@ and no per-field fallbacks:</p>
 <span>    <span class="va">snap</span></span>
 <span>  <span class="op">}</span></span>
 <span><span class="op">)</span></span></code></pre></div>
-<p>What disappeared and why:</p>
+<p>shinysnap handles the remaining work:</p>
 <ul>
-<li>The delays: values for inputs that are not on the page yet wait in
-the browser and are applied the moment the input is bound, and dynamic
-UI that re-renders during the restore is built with the restored values
-already in place (see <code><a href="../articles/dynamic-ui.html">vignette("dynamic-ui")</a></code>).</li>
-<li>The matrix special case: the value of every input is turned into the
-message its binding understands by a <em>restorer</em>; shinysnap ships
-them for shiny, bslib, and shinyMatrix inputs (see
-<code><a href="../articles/custom-inputs.html">vignette("custom-inputs")</a></code>).</li>
-<li>The <code><a href="https://rdrr.io/r/base/NULL.html" class="external-link">is.null()</a></code> fallbacks: the <code>migrate</code> hook
-is the one place where defaults for values introduced after a file was
-saved belong.</li>
-<li>The <code>.rds</code> file: JSON is readable, diffable, and safe to
-open (see <code><a href="../articles/format-spec.html">vignette("format-spec")</a></code>).</li>
+<li>It waits for dynamic inputs to appear before restoring their values.
+Inputs created during a restore can also start with their saved values
+already in place. See <code><a href="../articles/dynamic-ui.html">vignette("dynamic-ui")</a></code>.</li>
+<li>It converts each saved value into the message its input expects. The
+functions that do this are called <em>restorers</em>. shinysnap includes
+them for shiny, bslib, and shinyMatrix. See
+<code><a href="../articles/custom-inputs.html">vignette("custom-inputs")</a></code>.</li>
+<li>It calls your <code>migrate</code> function so you can supply
+defaults for fields added since the file was saved. This keeps those
+checks in one place.</li>
+<li>It writes JSON files that you can read, compare in version control,
+and open safely. See <code><a href="../articles/format-spec.html">vignette("format-spec")</a></code>.</li>
 </ul>
 </div>
 <div class="section level2">
@@ -285,8 +283,8 @@ packages.</li>
 <li>
 <code><a href="../articles/format-spec.html">vignette("format-spec")</a></code>: the file format.</li>
 <li>
-<code><a href="../articles/migrating-from-bookmarks.html">vignette("migrating-from-bookmarks")</a></code>: shinysnap next to
-<code><a href="https://rdrr.io/pkg/shiny/man/enableBookmarking.html" class="external-link">enableBookmarking()</a></code>.</li>
+<code><a href="../articles/migrating-from-bookmarks.html">vignette("migrating-from-bookmarks")</a></code>: using shinysnap
+with Shiny bookmarks.</li>
 </ul>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

@@ -77,8 +77,9 @@
 </div>
 <!-- badges: start -->
 
-<p>shinysnap saves and restores the state of a running Shiny app. It takes a <em>snapshot</em> (the input values plus any server-side values you register), writes it to a plain JSON file that users can keep, share, and diff, and restores it later into a different session, without a page reload and without <code><a href="https://rdrr.io/pkg/shiny/man/enableBookmarking.html" class="external-link">enableBookmarking()</a></code>. Inputs inside <code><a href="https://rdrr.io/pkg/shiny/man/renderUI.html" class="external-link">renderUI()</a></code> that appear during the restore receive their values as soon as they exist, so no timing code is needed, and a report says what was applied, what never appeared, and what failed.</p>
-<p>The word “snapshot” is used in the sense of a virtual machine or file system snapshot: a saved state you can write to a file and restore later. It has nothing to do with snapshot <em>testing</em> (<code>expect_snapshot</code> in testthat and shinytest2) or with screenshots.</p>
+<p>shinysnap lets users save their work in a Shiny app and return to it later. It saves the app’s input values, along with any values you choose to keep from the server, in a <em>snapshot file</em>. Users can download this JSON file, share it, and upload it to restore their work in another session.</p>
+<p>Restoring a snapshot keeps the app running without reloading the page or requiring <code><a href="https://rdrr.io/pkg/shiny/man/enableBookmarking.html" class="external-link">enableBookmarking()</a></code>. Inputs created by <code><a href="https://rdrr.io/pkg/shiny/man/renderUI.html" class="external-link">renderUI()</a></code> receive their saved values as they appear. A report tells you which inputs were restored, which were missing, and which failed.</p>
+<p>Here, a snapshot means a copy of the app’s state. Snapshot tests in testthat and shinytest2 serve a different purpose: they record output to check for unexpected changes. shinysnap does not take screenshots.</p>
 <div class="section level2">
 <h2 id="installation">Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
 </h2>
@@ -90,7 +91,7 @@
 <div class="section level2">
 <h2 id="example">Example<a class="anchor" aria-label="anchor" href="#example"></a>
 </h2>
-<p>A complete app with a save button and a restore upload:</p>
+<p>This app lets users download a snapshot file and upload it to restore their work:</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://shiny.posit.co/" class="external-link">shiny</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://nanx.me/shinysnap/">shinysnap</a></span><span class="op">)</span></span>
@@ -119,7 +120,7 @@
 <span><span class="op">}</span></span>
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/shinyApp.html" class="external-link">shinyApp</a></span><span class="op">(</span><span class="va">ui</span>, <span class="va">server</span><span class="op">)</span></span></code></pre></div>
-<p>The saved file is readable:</p>
+<p>You can open the saved file in a text editor:</p>
 <div class="sourceCode" id="cb3"><pre class="sourceCode json"><code class="sourceCode json"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a><span class="fu">{</span></span>
 <span id="cb3-2"><a href="#cb3-2" tabindex="-1"></a>  <span class="dt">"format"</span><span class="fu">:</span> <span class="dv">1</span><span class="fu">,</span></span>
 <span id="cb3-3"><a href="#cb3-3" tabindex="-1"></a>  <span class="dt">"app"</span><span class="fu">:</span> <span class="fu">{</span><span class="dt">"name"</span><span class="fu">:</span> <span class="st">"demo"</span><span class="fu">,</span> <span class="dt">"version"</span><span class="fu">:</span> <span class="st">"1.0.0"</span><span class="fu">},</span></span>
@@ -138,12 +139,13 @@
 <span id="cb3-16"><a href="#cb3-16" tabindex="-1"></a>  <span class="fu">},</span></span>
 <span id="cb3-17"><a href="#cb3-17" tabindex="-1"></a>  <span class="dt">"meta"</span><span class="fu">:</span> <span class="fu">{}</span></span>
 <span id="cb3-18"><a href="#cb3-18" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
-<p>Uploading it puts the app back into that state: the select is applied, the dynamic UI it controls re-renders, and the slider inside it gets its value the moment it exists.</p>
+<p>Uploading this file selects the complex model, which creates the <code>k</code> slider. The slider then receives its saved value.</p>
 </div>
 <div class="section level2">
 <h2 id="before-and-after">Before and after<a class="anchor" aria-label="anchor" href="#before-and-after"></a>
 </h2>
-<p>Apps that do this by hand collect <code>reactiveValuesToList(input)</code> into an <code>.rds</code> file and, on upload, loop over <code>session$sendInputMessage()</code>, add a special case for matrix inputs, guard every server-side value with <code><a href="https://rdrr.io/r/base/NULL.html" class="external-link">is.null()</a></code> for files saved by older versions, and send the values of dynamic inputs in waves of <code>shinyjs::delay()</code>, because messages for inputs that are not on the page yet are dropped silently. With shinysnap, the server side of such an app becomes:</p>
+<p>You may already save your app’s state with <code>reactiveValuesToList(input)</code> and an <code>.rds</code> file. Restoring it usually takes more work: you need to send each value back to its input, handle inputs such as matrices, and provide defaults for fields added since the file was saved. Dynamic inputs add another problem because Shiny drops messages sent before an input exists.</p>
+<p>shinysnap handles these steps for you. You register the values to save and provide functions to check files and update values from older versions:</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="reference/snap_enable.html">snap_enable</a></span><span class="op">(</span>app <span class="op">=</span> <span class="st">"myapp"</span>, version <span class="op">=</span> <span class="st">"2.4.0"</span>, exclude <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"^btn_"</span>, <span class="st">"^nav$"</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="fu"><a href="reference/snap_track.html">snap_track</a></span><span class="op">(</span><span class="va">prefs</span><span class="op">)</span></span>
@@ -164,21 +166,21 @@
 <p>See <code><a href="articles/shinysnap.html">vignette("shinysnap")</a></code> for the full comparison and <code><a href="articles/dynamic-ui.html">vignette("dynamic-ui")</a></code> for how the restore works.</p>
 </div>
 <div class="section level2">
-<h2 id="what-is-in-the-box">What is in the box<a class="anchor" aria-label="anchor" href="#what-is-in-the-box"></a>
+<h2 id="main-functions">Main functions<a class="anchor" aria-label="anchor" href="#main-functions"></a>
 </h2>
 <ul>
 <li>
-<code><a href="reference/snap_take.html">snap_take()</a></code>, <code><a href="reference/snap_restore.html">snap_restore()</a></code>: the snapshot and the restore transaction, with a report.</li>
+<code><a href="reference/snap_take.html">snap_take()</a></code> and <code><a href="reference/snap_restore.html">snap_restore()</a></code> save and restore the app’s state. Each restore produces a report.</li>
 <li>
-<code><a href="reference/snap_write.html">snap_write()</a></code>, <code><a href="reference/snap_write.html">snap_read()</a></code>: JSON files, zip bundles that keep uploaded files, and (behind <code>trust = TRUE</code>) <code>.rds</code>.</li>
+<code><a href="reference/snap_write.html">snap_write()</a></code> and <code><a href="reference/snap_write.html">snap_read()</a></code> write and read JSON files, zip bundles that include uploaded files, and <code>.rds</code> files with <code>trust = TRUE</code>.</li>
 <li>
-<code><a href="reference/snap_track.html">snap_track()</a></code>, <code><a href="reference/snap_on_save.html">snap_on_save()</a></code>, <code><a href="reference/snap_on_restore.html">snap_on_restore()</a></code>, <code><a href="reference/snap_on_restore.html">snap_on_restored()</a></code>: server-side values and hooks shaped like shiny’s bookmarking hooks.</li>
+<code><a href="reference/snap_track.html">snap_track()</a></code>, <code><a href="reference/snap_on_save.html">snap_on_save()</a></code>, <code><a href="reference/snap_on_restore.html">snap_on_restore()</a></code>, and <code><a href="reference/snap_on_restore.html">snap_on_restored()</a></code> let you save values from the server and run code when a snapshot is taken or restored.</li>
 <li>
-<code><a href="reference/snap_restorer.html">snap_restorer()</a></code>: how an input’s value becomes the message its binding understands; built-ins for shiny, bslib, and shinyMatrix inputs.</li>
+<code><a href="reference/snap_restorer.html">snap_restorer()</a></code> adds support for custom inputs. shinysnap includes support for inputs from shiny, bslib, and shinyMatrix.</li>
 <li>
-<code><a href="reference/snap_download_button.html">snap_download_button()</a></code>, <code><a href="reference/snap_download_button.html">snap_download_handler()</a></code>, <code><a href="reference/snap_file_input.html">snap_file_input()</a></code>, <code><a href="reference/snap_file_input.html">snap_file_restore()</a></code>: the UI boilerplate.</li>
+<code><a href="reference/snap_download_button.html">snap_download_button()</a></code>, <code><a href="reference/snap_download_button.html">snap_download_handler()</a></code>, <code><a href="reference/snap_file_input.html">snap_file_input()</a></code>, and <code><a href="reference/snap_file_input.html">snap_file_restore()</a></code> add controls for saving and restoring snapshot files.</li>
 <li>
-<code><a href="reference/snap_as_bookmark_url.html">snap_as_bookmark_url()</a></code>, <code><a href="reference/snap_as_bookmark_url.html">snap_as_test_inputs()</a></code>, <code><a href="reference/snap_diff.html">snap_diff()</a></code>: interoperate with bookmarking, <code><a href="https://rdrr.io/pkg/shiny/man/testServer.html" class="external-link">testServer()</a></code>, and version control.</li>
+<code><a href="reference/snap_as_bookmark_url.html">snap_as_bookmark_url()</a></code>, <code><a href="reference/snap_as_bookmark_url.html">snap_as_test_inputs()</a></code>, and <code><a href="reference/snap_diff.html">snap_diff()</a></code> let you use snapshots with bookmarking, <code><a href="https://rdrr.io/pkg/shiny/man/testServer.html" class="external-link">testServer()</a></code>, and version control.</li>
 </ul>
 </div>
 <div class="section level2">

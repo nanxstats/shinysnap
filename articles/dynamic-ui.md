@@ -1,63 +1,61 @@
 # Restoring dynamic UI
 
-This vignette explains why restoring state into an app with
-[`renderUI()`](https://rdrr.io/pkg/shiny/man/renderUI.html) is hard,
-what shinysnap does about it, and how to read the report that every
-restore produces.
+Inputs created by
+[`renderUI()`](https://rdrr.io/pkg/shiny/man/renderUI.html) may not
+exist when a restore starts. This vignette explains how shinysnap waits
+for them and how to read the report that each restore produces.
 
-## Why hand-rolled restores need delays
+## Why dynamic inputs need special handling
 
-`session$sendInputMessage(id, list(value = v))` is what every
-`update*Input()` function calls. On the client, Shiny looks for a
-*bound* input with that id and, if it finds none, drops the message.
-Nothing is logged on either side. An input that lives inside a
-[`renderUI()`](https://rdrr.io/pkg/shiny/man/renderUI.html) which has
-not rendered yet is exactly such an input, so a restore that sends every
-value at once loses the values of all dynamic inputs. The usual
-workaround is to send those values later, after a guessed delay, one
-wave per level of dynamic UI. The guesses are fragile, and a wave that
-arrives too early is still dropped silently.
+Shiny’s `update*Input()` functions send messages through
+`session$sendInputMessage()`. In the browser, Shiny looks for an input
+with the given id that it has *bound*, or connected to the server. If
+there is no such input, Shiny drops the message without logging
+anything.
 
-## What shinysnap does instead
+This causes problems when you restore inputs created by
+[`renderUI()`](https://rdrr.io/pkg/shiny/man/renderUI.html). Any message
+sent before the input is ready is lost. You can try adding delays, but a
+delay that works on one machine may be too short on another. Nested
+dynamic UI makes this harder because each set of inputs must wait for
+the previous set.
 
-A restore is a *transaction* between the server and the client script
-that shinysnap adds to the page.
+## How shinysnap restores inputs
+
+The server and shinysnap’s browser script work together during a
+restore:
 
 1.  The server writes the tracked values back into your
     `reactiveValues`, runs the
     [`snap_on_restore()`](https://nanx.me/shinysnap/reference/snap_on_restore.md)
-    hooks, and sends **all** input values to the browser in one message,
-    each already turned into the payload its input binding understands.
+    hooks, and sends **all** input values to the browser in one message.
+    Each value is converted to the format its input binding expects.
 2.  The client applies every value whose input is on the page right
     away, through the binding’s `receiveMessage()`, and keeps the others
     pending.
-3.  Whenever Shiny binds a new input (because a `uiOutput` rendered or
-    re-rendered), the client checks the pending list and applies the
-    value for that id. The value of the select that controls a branch is
-    applied first, the branch renders, its inputs bind, their values are
-    applied, a nested branch renders, and so on, without any timing
-    configuration.
-4.  While the transaction is in flight, the server also primes shiny’s
-    own
+3.  Whenever Shiny binds an input, the browser script applies the saved
+    value for that id. For example, restoring a select input may create
+    another group of inputs. Those inputs receive their values when they
+    appear, even if they create further inputs in turn. An input that is
+    recreated during the restore also receives its saved value again.
+4.  During the restore, the server makes the saved values available to
+    Shiny’s
     [`restoreInput()`](https://rdrr.io/pkg/shiny/man/restoreInput.html)
-    mechanism with the snapshot’s values. Every built-in input
-    constructor calls
-    [`restoreInput()`](https://rdrr.io/pkg/shiny/man/restoreInput.html),
-    so dynamic UI that renders during the restore is built with the
-    restored value *in the HTML*: no flash of defaults, and observers
-    watching those inputs fire once, with the right value. The client
-    recognizes such inputs and reports them as `constructed` rather than
-    applying the value a second time.
-5.  The transaction settles once the page has been quiet for a moment
-    (no busy state, no new UI, no new values, 0.3 seconds by default) or
-    after the timeout (10 seconds by default). The client then reports
-    one status per input.
+    function. Shiny’s input constructors call this function, so new
+    inputs can start with their saved values already in the HTML. This
+    avoids briefly showing defaults and triggering observers with those
+    defaults. The browser reports these inputs as `constructed` without
+    applying their values again.
+5.  The restore finishes once the page has been quiet for 0.3 seconds by
+    default: Shiny is not busy and no UI or values are changing. It also
+    has a timeout of 10 seconds by default. The browser then reports a
+    status for every input.
 
-One detail matters for anyone who has tried to do this themselves: Shiny
-sends a newly bound input’s *initial* value to the server right after it
-fires the bound event. A value applied synchronously from that event is
-overwritten by the default a moment later. shinysnap defers each apply
-past that point.
+The order of events matters here. Shiny sends a new input’s initial
+value to the server just after the `shiny:bound` event. Applying a saved
+value inside that event handler would let the initial value overwrite
+it. shinysnap waits until that step has finished before applying the
+saved value.
 
 ## The report
 
@@ -81,20 +79,21 @@ input:
 |----|----|
 | `applied` | sent to an input that was on the page |
 | `constructed` | the input appeared during the restore already carrying the value (via [`restoreInput()`](https://rdrr.io/pkg/shiny/man/restoreInput.html)) |
-| `reapplied` | the input re-rendered during the restore and received the value again (only without the accelerator) |
+| `reapplied` | the input was recreated during the restore and received the value again, without help from [`restoreInput()`](https://rdrr.io/pkg/shiny/man/restoreInput.html) |
 | `missing` | the input never appeared before the restore settled |
 | `failed` | the binding raised an error; `detail` has the message |
 | `mismatched` | applied, but the input reports a different value afterwards, for example a select whose choices do not contain it |
 | `skipped` | excluded, or its restorer chose not to restore it (passwords, buttons, uploads) |
 
-The attributes `txn`, `elapsed`, `settled`, and `timed_out` describe the
-transaction. `missing` and `failed` inputs produce one consolidated
-warning by default; `snap_restore(unknown = "skip")` silences it and
+The attributes `txn`, `elapsed`, `settled`, and `timed_out` record the
+restore id, duration, and whether it finished after a quiet period or a
+timeout. `missing` and `failed` inputs produce a single warning by
+default; `snap_restore(unknown = "skip")` silences it and
 `unknown = "error"` rejects the promise instead.
 
-A `missing` row is the normal outcome for an input that a newer version
-of the app no longer has, or for an input whose UI is not reachable in
-the restored state. Two situations are worth knowing about:
+A `missing` row can mean the input was removed in a newer version of the
+app, or that the saved state does not display its UI. Two common cases
+are:
 
 - Outputs on hidden tabs are suspended by default, so a
   [`renderUI()`](https://rdrr.io/pkg/shiny/man/renderUI.html) on a tab
@@ -109,9 +108,11 @@ the restored state. Two situations are worth knowing about:
 
 ## Working with the promise
 
+The restore continues after
 [`snap_restore()`](https://nanx.me/shinysnap/reference/snap_restore.md)
-returns immediately with a handle; the report arrives later. Three ways
-to use it:
+returns. Its return value is a *handle*: a list containing the restore
+id and a promise for the report. You can receive the report through a
+callback, a hook, or the promise:
 
 ``` r
 
@@ -129,23 +130,24 @@ observeEvent(input$go, {
 })
 ```
 
-The handle is deliberately *not* a promise. Shiny waits for a promise
-that an observer returns before it flushes, and the report can only
-arrive once the browser has seen the page go quiet, so an observer that
-returned the promise would stall its own restore. Keep promises inside
-the observer, or end the observer with `NULL` as above when its last
-expression is a
+If an observer returns a promise, Shiny waits for it to resolve before
+sending updates to the browser. But the restore needs those updates to
+finish and produce its report. Returning the restore’s promise from an
+observer would therefore leave both waiting indefinitely.
+
+Returning the handle is safe because it is an ordinary list. If you use
 [`promises::then()`](https://rstudio.github.io/promises/reference/then.html)
-call.
+inside an observer, end the observer with `NULL` as above so it does not
+return a promise.
 
 ## Reacting during a restore
 
 [`snap_is_restoring()`](https://nanx.me/shinysnap/reference/snap_is_restoring.md)
 is `TRUE` from the moment
 [`snap_restore()`](https://nanx.me/shinysnap/reference/snap_restore.md)
-is called until the report arrives. Use it to keep expensive observers
-quiet while intermediate values stream in, and to run something once the
-state is complete:
+is called until the report arrives. Use it to skip expensive
+calculations while inputs are still changing, then run them when the
+restore finishes:
 
 ``` r
 
@@ -163,17 +165,18 @@ observe({
 
 ## Notes on timing
 
-- Inputs with a rate policy (text inputs debounce, sliders throttle) may
-  lag the browser by a few hundred milliseconds. A snapshot taken from a
-  download handler runs after the click has reached the server, which in
-  practice is later than that; do not add delays.
-- A second
+- Some inputs wait briefly before sending changes to the server. Text
+  inputs wait for a pause in typing; sliders limit how often they send
+  updates. A download handler takes its snapshot after the click reaches
+  the server, which in practice gives these updates time to arrive. You
+  don’t need to add delays.
+- Calling
   [`snap_restore()`](https://nanx.me/shinysnap/reference/snap_restore.md)
-  while one is in flight cancels the first, whose promise rejects with a
-  condition of class `shinysnap_cancelled`.
-- `snap_restore(use_restore_context = FALSE)` turns the
-  [`restoreInput()`](https://rdrr.io/pkg/shiny/man/restoreInput.html)
-  accelerator off. Everything still ends in the right state; dynamic
-  inputs are then `applied` or `reapplied` instead of `constructed`, and
-  their observers see the default value before the restored one. It
-  exists to isolate problems, not for regular use.
+  during a restore cancels the first restore, whose promise rejects with
+  a condition of class `shinysnap_cancelled`.
+- Use `snap_restore(use_restore_context = FALSE)` when debugging to
+  disable the use of
+  [`restoreInput()`](https://rdrr.io/pkg/shiny/man/restoreInput.html).
+  Dynamic inputs still receive their saved values, but are reported as
+  `applied` or `reapplied` instead of `constructed`. Their observers see
+  the default value before the saved one.

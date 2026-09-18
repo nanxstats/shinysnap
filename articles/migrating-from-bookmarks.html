@@ -74,16 +74,16 @@
       <img src="../logo.png" class="logo" alt=""><h1>Snapshots and bookmarks</h1>
             
       
-      <small class="dont-index">Source: <a href="https://github.com/nanxstats/shinysnap/blob/v0.1.0/vignettes/migrating-from-bookmarks.Rmd" class="external-link"><code>vignettes/migrating-from-bookmarks.Rmd</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/nanxstats/shinysnap/blob/main/vignettes/migrating-from-bookmarks.Rmd" class="external-link"><code>vignettes/migrating-from-bookmarks.Rmd</code></a></small>
       <div class="d-none name"><code>migrating-from-bookmarks.Rmd</code></div>
     </div>
 
     
     
 <p>Shiny’s bookmarking (<code><a href="https://rdrr.io/pkg/shiny/man/enableBookmarking.html" class="external-link">enableBookmarking()</a></code>) and shinysnap
-solve neighbouring problems, and an app can use both. This vignette
-compares them, shows how they coexist, and lists what to change when
-moving an app’s save-and-restore feature from one to the other.</p>
+both let users return to a saved state. This vignette helps you choose
+between them, use them together, or switch an app from bookmarks to
+snapshot files.</p>
 <div class="section level2">
 <h2 id="what-each-one-does">What each one does<a class="anchor" aria-label="anchor" href="#what-each-one-does"></a>
 </h2>
@@ -100,79 +100,77 @@ moving an app’s save-and-restore feature from one to the other.</p>
 </tr></thead>
 <tbody>
 <tr class="odd">
-<td>state lives in</td>
+<td>where state is saved</td>
 <td>a URL (<code>"url"</code>) or a server directory
 (<code>"server"</code>)</td>
 <td>a file the user downloads and uploads</td>
 </tr>
 <tr class="even">
-<td>restore happens</td>
-<td>by loading the URL: a new session, a page reload</td>
-<td>into the running session, no reload</td>
+<td>how it restores</td>
+<td>opens the URL in a new session</td>
+<td>restores the current session without reloading</td>
 </tr>
 <tr class="odd">
-<td>dynamic UI</td>
-<td>restored at construction through <code><a href="https://rdrr.io/pkg/shiny/man/restoreInput.html" class="external-link">restoreInput()</a></code>
+<td>dynamic inputs</td>
+<td>receive saved values when created, through
+<code><a href="https://rdrr.io/pkg/shiny/man/restoreInput.html" class="external-link">restoreInput()</a></code>
 </td>
-<td>restored at construction <em>and</em> by the client as inputs
-appear</td>
+<td>receive saved values when created or when they appear in the
+browser</td>
 </tr>
 <tr class="even">
-<td>requires</td>
-<td>a UI function, <code><a href="https://rdrr.io/pkg/shiny/man/enableBookmarking.html" class="external-link">enableBookmarking()</a></code>
+<td>setup</td>
+<td>a UI function and <code><a href="https://rdrr.io/pkg/shiny/man/enableBookmarking.html" class="external-link">enableBookmarking()</a></code>
 </td>
-<td>nothing in the UI</td>
+<td>no required UI changes</td>
 </tr>
 <tr class="odd">
-<td>readable by people</td>
-<td>no (URL-encoded JSON, or <code>.rds</code> files)</td>
-<td>yes (JSON)</td>
+<td>file contents</td>
+<td>JSON encoded in a URL, or <code>.rds</code> files</td>
+<td>JSON you can read in a text editor</td>
 </tr>
 <tr class="even">
-<td>survives app changes</td>
-<td>no built-in help</td>
-<td>app name and version in the file, <code>validate</code> and
-<code>migrate</code> hooks, a report of what did not apply</td>
+<td>support for app changes</td>
+<td>no migration helpers</td>
+<td>app name and version, <code>validate</code> and <code>migrate</code>
+hooks, and a restore report</td>
 </tr>
 </tbody>
 </table>
-<p>Bookmarking is the right tool for “send a colleague a link to what I
-am looking at”. shinysnap is the right tool for “save my work to a file,
-come back next month, possibly on a newer version of the app”.</p>
+<p>Use bookmarking when you want to send a colleague a link to what
+you’re looking at. Use shinysnap when you want to save your work to a
+file and return to it later, perhaps after the app has been updated.</p>
 </div>
 <div class="section level2">
-<h2 id="coexistence">Coexistence<a class="anchor" aria-label="anchor" href="#coexistence"></a>
+<h2 id="using-both">Using both<a class="anchor" aria-label="anchor" href="#using-both"></a>
 </h2>
-<p>shinysnap reuses the parts of bookmarking’s machinery that make sense
-mid-session, so an app that already bookmarks keeps working:</p>
+<p>You can add shinysnap to an app that already uses bookmarking:</p>
 <ul>
 <li>Ids excluded with <code><a href="https://rdrr.io/pkg/shiny/man/setBookmarkExclude.html" class="external-link">setBookmarkExclude()</a></code> are excluded
 from snapshots too.</li>
-<li>Values that shiny’s serializers mark as unserializable (passwords,
-and anything registered with <code><a href="https://rdrr.io/pkg/shiny/man/setSerializer.html" class="external-link">setSerializer()</a></code>) are never
-captured.</li>
-<li>During a restore, shinysnap primes the session’s restore context,
-the object behind <code><a href="https://rdrr.io/pkg/shiny/man/restoreInput.html" class="external-link">restoreInput()</a></code>, with the snapshot’s
-values, and puts the previous context back when the restore
-settles.</li>
+<li>Values that Shiny marks as unserializable, such as passwords, are
+never saved. This includes values excluded by a serializer registered
+with <code><a href="https://rdrr.io/pkg/shiny/man/setSerializer.html" class="external-link">setSerializer()</a></code>.</li>
+<li>During a restore, shinysnap makes the snapshot’s values available to
+<code><a href="https://rdrr.io/pkg/shiny/man/restoreInput.html" class="external-link">restoreInput()</a></code>, which supplies initial values to new
+inputs. It restores the previous settings when the restore
+finishes.</li>
 <li>shinysnap’s own internal inputs are marked unserializable, so they
 never show up in a bookmark URL.</li>
 </ul>
-<p>The hooks mirror each other.
-<code>onBookmark(function(state) ...)</code> writes into
-<code>state$values</code>; so does <code><a href="../reference/snap_on_save.html">snap_on_save()</a></code>.
-<code><a href="https://rdrr.io/pkg/shiny/man/onBookmark.html" class="external-link">onRestore()</a></code> reads <code>state$values</code>;
-<code><a href="../reference/snap_on_restore.html">snap_on_restore()</a></code> reads the file’s <code>values</code>, and
-<code><a href="../reference/snap_track.html">snap_track()</a></code> writes them back into your
-<code>reactiveValues</code> for you.</p>
+<p>The callbacks, or <em>hooks</em>, work similarly in both packages.
+<code>onBookmark(function(state) ...)</code> and
+<code><a href="../reference/snap_on_save.html">snap_on_save()</a></code> write to <code>state$values</code>.
+<code><a href="https://rdrr.io/pkg/shiny/man/onBookmark.html" class="external-link">onRestore()</a></code> and <code><a href="../reference/snap_on_restore.html">snap_on_restore()</a></code> read the
+saved values. If you use <code>reactiveValues</code>,
+<code><a href="../reference/snap_track.html">snap_track()</a></code> can save and restore them for you.</p>
 </div>
 <div class="section level2">
 <h2 id="turning-a-snapshot-into-a-bookmark">Turning a snapshot into a bookmark<a class="anchor" aria-label="anchor" href="#turning-a-snapshot-into-a-bookmark"></a>
 </h2>
-<p><code><a href="../reference/snap_as_bookmark_url.html">snap_as_bookmark_url()</a></code> encodes a snapshot the way URL
-bookmarking does, so that a saved state can also be opened as a link,
-provided the app has <code>enableBookmarking("url")</code> and a UI
-function:</p>
+<p>Use <code><a href="../reference/snap_as_bookmark_url.html">snap_as_bookmark_url()</a></code> to turn a snapshot into a
+link. The app must use <code>enableBookmarking("url")</code> and a UI
+function to open it:</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://nanx.me/shinysnap/">shinysnap</a></span><span class="op">)</span></span>
 <span><span class="va">snap</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
@@ -182,22 +180,20 @@ function:</p>
 <span><span class="fu"><a href="../reference/snap_as_bookmark_url.html">snap_as_bookmark_url</a></span><span class="op">(</span><span class="va">snap</span>, base_url <span class="op">=</span> <span class="st">"https://example.org/app/"</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [1] "https://example.org/app/?_inputs_&amp;n=100&amp;model=%22complex%22&amp;weights=%5B0.5%2C0.75%5D&amp;_values_&amp;note=%22baseline%22"</span></span></code></pre></div>
 <p>Inside a server function, pass <code>session</code> instead of
-<code>base_url</code> and the protocol, host, port, and path the browser
-used are filled in. The query string carries the same
-<code>_inputs_</code> and <code>_values_</code> keys, with the same
-encoding, as the URL <code>session$doBookmark()</code> produces for the
-same state.</p>
+<code>base_url</code> to use the app’s current address. The result uses
+the same <code>_inputs_</code> and <code>_values_</code> keys and
+encoding as a URL created by <code>session$doBookmark()</code>.</p>
 </div>
 <div class="section level2">
 <h2 id="migrating-an-app">Migrating an app<a class="anchor" aria-label="anchor" href="#migrating-an-app"></a>
 </h2>
 <ol style="list-style-type: decimal">
-<li>Replace <code><a href="https://rdrr.io/pkg/shiny/man/enableBookmarking.html" class="external-link">enableBookmarking()</a></code> and the
-<code><a href="https://rdrr.io/pkg/shiny/man/bookmarkButton.html" class="external-link">bookmarkButton()</a></code> with <code><a href="../reference/snap_download_button.html">snap_download_button()</a></code>
-and <code><a href="../reference/snap_file_input.html">snap_file_input()</a></code> in the UI, and
+<li>Remove <code><a href="https://rdrr.io/pkg/shiny/man/enableBookmarking.html" class="external-link">enableBookmarking()</a></code> and
+<code><a href="https://rdrr.io/pkg/shiny/man/bookmarkButton.html" class="external-link">bookmarkButton()</a></code>. Add <code><a href="../reference/snap_download_button.html">snap_download_button()</a></code>
+and <code><a href="../reference/snap_file_input.html">snap_file_input()</a></code> to the UI, and
 <code><a href="../reference/snap_download_button.html">snap_download_handler()</a></code> and
-<code><a href="../reference/snap_file_input.html">snap_file_restore()</a></code> in the server. The UI no longer needs
-to be a function.</li>
+<code><a href="../reference/snap_file_input.html">snap_file_restore()</a></code> to the server function. The UI no
+longer needs to be a function.</li>
 <li>Replace <code><a href="https://rdrr.io/pkg/shiny/man/onBookmark.html" class="external-link">onBookmark()</a></code> hooks with
 <code><a href="../reference/snap_on_save.html">snap_on_save()</a></code>, and <code><a href="https://rdrr.io/pkg/shiny/man/onBookmark.html" class="external-link">onRestore()</a></code> hooks with
 <code><a href="../reference/snap_track.html">snap_track()</a></code> for <code>reactiveValues</code> (they are
@@ -209,9 +205,9 @@ never be saved.</li>
 <li>Give the app a name and a version with <code><a href="../reference/snap_enable.html">snap_enable()</a></code>,
 and write a <code>migrate</code> hook the first time a saved value
 changes meaning.</li>
-<li>For tests, <code><a href="../reference/snap_as_bookmark_url.html">snap_as_test_inputs()</a></code> turns a saved file
-into the <code>session$setInputs()</code> call of a
-<code><a href="https://rdrr.io/pkg/shiny/man/testServer.html" class="external-link">shiny::testServer()</a></code> test.</li>
+<li>In <code><a href="https://rdrr.io/pkg/shiny/man/testServer.html" class="external-link">shiny::testServer()</a></code> tests, use
+<code><a href="../reference/snap_as_bookmark_url.html">snap_as_test_inputs()</a></code> to prepare the saved inputs for a
+<code>session$setInputs()</code> call.</li>
 </ol>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

@@ -1,20 +1,20 @@
 # Get started with shinysnap
 
-shinysnap lets users of a Shiny app save their work and pick it up
-later: it takes a *snapshot* of the running app (the input values plus
-any server-side values you register), writes it to a plain JSON file
-that can be shared and kept under version control, and restores it into
-another session without a page reload and without
+shinysnap lets users save their work in a Shiny app and return to it
+later. A *snapshot* contains the app’s input values and any values you
+choose to keep from the server. Users can download it as a JSON file,
+share it, and upload it to restore their work in another session. The
+app stays open throughout the restore. You don’t need
 [`shiny::enableBookmarking()`](https://rdrr.io/pkg/shiny/man/enableBookmarking.html).
 
-The word “snapshot” is used in the sense of a virtual machine or file
-system snapshot: a saved state you can write to a file, share, and
-restore later. It has nothing to do with snapshot *testing*
-(`expect_snapshot` in testthat and shinytest2) or with screenshots.
+Here, a snapshot means a copy of the app’s state. Snapshot tests in
+testthat and shinytest2 serve a different purpose: they record output to
+check for unexpected changes. shinysnap does not take screenshots.
 
 ## A minimal app
 
-Two UI helpers and two server calls are all it takes:
+Add a download button and a file input to the UI, then connect them to
+handlers in the server function:
 
 ``` r
 
@@ -47,18 +47,18 @@ server <- function(input, output, session) {
 shinyApp(ui, server)
 ```
 
-Clicking **Save state** downloads a `.json` file with every input that
-is currently on the page. Uploading that file later, in any session,
-puts the app back into that state: the select is applied first, the
-dynamic UI it controls re-renders, and the inputs inside it receive
-their values as soon as they exist. You never write timing code.
+Click **Save state** to download a `.json` file with the current input
+values. Upload it later to restore those values in the same app. For
+example, a snapshot with `model = "complex"` selects that model, which
+creates the `k` slider. The slider then receives its saved value. You
+don’t need to add delays to wait for it to appear.
 
 ## The file
 
-Snapshot files are meant to be read by people. Numbers are written with
-the fewest digits that read back to the same value, and everything JSON
-cannot express directly (dates, matrices, `NA`, the type of an empty
-vector) uses a small typed wrapper. This is what a file looks like:
+You can read snapshot files in a text editor. Numbers use the fewest
+digits needed to preserve their value. Values that JSON cannot represent
+directly, such as dates, matrices, `NA`, and empty vectors, include
+extra fields that record their type. Here’s an example:
 
 ``` r
 
@@ -95,8 +95,8 @@ cat(snap_serialize(snap))
 #> }
 ```
 
-Reading it back gives the same R values, so hand-editing a file and
-restoring it is a supported workflow:
+Reading the file gives you the same R values. You can also edit the file
+in a text editor before restoring it:
 
 ``` r
 
@@ -113,32 +113,32 @@ str(snap_inputs(back))
 
 ## What gets saved
 
-- **Inputs** that are on the page, by fully namespaced id. Values of
-  inputs whose dynamic UI has been removed are dropped, so the file
-  describes the UI as the user saw it. Action buttons, passwords, and
-  file uploads are never stored as input values (uploads can travel in a
-  zip bundle, see
-  [`snap_write()`](https://nanx.me/shinysnap/reference/snap_write.md)).
+- **Inputs** that are on the page, identified by their full ids,
+  including any module prefixes. Inputs whose UI has been removed are
+  left out. Action buttons, passwords, and file uploads are never stored
+  as input values. You can include uploaded files in a zip bundle with
+  [`snap_write()`](https://nanx.me/shinysnap/reference/snap_write.md).
 - **Values** from the `reactiveValues` you register with
   [`snap_track()`](https://nanx.me/shinysnap/reference/snap_track.md),
   plus whatever your
   [`snap_on_save()`](https://nanx.me/shinysnap/reference/snap_on_save.md)
   hooks add.
-- The app name and version, so a restore can refuse files from another
-  app and migrate files from an older version.
+- The **app name and version**, so shinysnap can reject files from
+  another app and run your migration code for files from an older
+  version.
 
-## The before and after
+## Replacing your own restore code
 
-Apps that save state by hand usually end up with something like this:
-`reactiveValuesToList(input)` into an `.rds` file, and on upload a loop
-of `session$sendInputMessage()` calls, a special case for matrix inputs,
-and, because inputs inside
-[`renderUI()`](https://rdrr.io/pkg/shiny/man/renderUI.html) do not exist
-yet when the first messages are sent, staggered delays.
+If you already save your app’s state with `reactiveValuesToList(input)`
+and an `.rds` file, your restore code may look something like this. It
+sends each saved value back to its input, handles matrices separately,
+and provides defaults for fields added since the file was saved. It also
+adds delays to wait for inputs created by
+[`renderUI()`](https://rdrr.io/pkg/shiny/man/renderUI.html).
 
 ``` r
 
-# Before: a hand-rolled restore (abridged)
+# Before: restoring values manually (some code omitted)
 observeEvent(input$restore_file, {
   saved <- readRDS(input$restore_file$datapath)
   is_matrix <- vapply(saved$inputs, is.matrix, logical(1))
@@ -164,8 +164,8 @@ observeEvent(input$restore_file, {
 })
 ```
 
-With shinysnap, the same app needs no delays, no matrix special case,
-and no per-field fallbacks:
+With shinysnap, you register the values to save and provide functions to
+check files and update values from older versions:
 
 ``` r
 
@@ -188,22 +188,21 @@ snap_file_restore(
 )
 ```
 
-What disappeared and why:
+shinysnap handles the remaining work:
 
-- The delays: values for inputs that are not on the page yet wait in the
-  browser and are applied the moment the input is bound, and dynamic UI
-  that re-renders during the restore is built with the restored values
-  already in place (see
-  [`vignette("dynamic-ui")`](https://nanx.me/shinysnap/articles/dynamic-ui.md)).
-- The matrix special case: the value of every input is turned into the
-  message its binding understands by a *restorer*; shinysnap ships them
-  for shiny, bslib, and shinyMatrix inputs (see
-  [`vignette("custom-inputs")`](https://nanx.me/shinysnap/articles/custom-inputs.md)).
-- The [`is.null()`](https://rdrr.io/r/base/NULL.html) fallbacks: the
-  `migrate` hook is the one place where defaults for values introduced
-  after a file was saved belong.
-- The `.rds` file: JSON is readable, diffable, and safe to open (see
-  [`vignette("format-spec")`](https://nanx.me/shinysnap/articles/format-spec.md)).
+- It waits for dynamic inputs to appear before restoring their values.
+  Inputs created during a restore can also start with their saved values
+  already in place. See
+  [`vignette("dynamic-ui")`](https://nanx.me/shinysnap/articles/dynamic-ui.md).
+- It converts each saved value into the message its input expects. The
+  functions that do this are called *restorers*. shinysnap includes them
+  for shiny, bslib, and shinyMatrix. See
+  [`vignette("custom-inputs")`](https://nanx.me/shinysnap/articles/custom-inputs.md).
+- It calls your `migrate` function so you can supply defaults for fields
+  added since the file was saved. This keeps those checks in one place.
+- It writes JSON files that you can read, compare in version control,
+  and open safely. See
+  [`vignette("format-spec")`](https://nanx.me/shinysnap/articles/format-spec.md).
 
 ## Learn more
 
@@ -215,5 +214,4 @@ What disappeared and why:
 - [`vignette("format-spec")`](https://nanx.me/shinysnap/articles/format-spec.md):
   the file format.
 - [`vignette("migrating-from-bookmarks")`](https://nanx.me/shinysnap/articles/migrating-from-bookmarks.md):
-  shinysnap next to
-  [`enableBookmarking()`](https://rdrr.io/pkg/shiny/man/enableBookmarking.html).
+  using shinysnap with Shiny bookmarks.

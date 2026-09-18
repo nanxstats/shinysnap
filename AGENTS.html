@@ -43,70 +43,73 @@
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="logo.png" class="logo" alt=""><h1>AGENTS.md</h1>
-      <small class="dont-index">Source: <a href="https://github.com/nanxstats/shinysnap/blob/v0.1.0/AGENTS.md" class="external-link"><code>AGENTS.md</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/nanxstats/shinysnap/blob/main/AGENTS.md" class="external-link"><code>AGENTS.md</code></a></small>
     </div>
 
 <div id="agentsmd" class="section level1">
 
-<p>Guidelines for AI agents (and humans) working on shinysnap: how to work in this repository, what to verify, and the traps that cost real debugging time while the package was built.</p>
-<p>The architecture, the data flows, and the reasons behind the design decisions are in <code>DESIGN.md</code>. Read it before changing the codec, the restore transaction, or the client script; this file does not repeat it. The brief that produced the package is <code>deps-src/bootstrap.md</code>. The whole <code>deps-src/</code> tree (the brief, vendored CRAN sources of shiny, bslib, shinyMatrix, zmij, jsonlite, zip, prior-art packages) is gitignored and regenerated with <code>okr sync</code>. Verify claims about Shiny internals against those sources, not against memory.</p>
+<p>This file explains how to work on shinysnap, what to check, and which mistakes to watch for.</p>
+<p>Read <code>DESIGN.md</code> before changing how values are encoded, how a restore works, or how the browser script behaves. It explains the package’s structure and the reasons for its design.</p>
+<p>The original brief is in <code>deps-src/bootstrap.md</code>. The <code>deps-src/</code> directory also contains copies of package sources, including shiny, bslib, shinyMatrix, zmij, jsonlite, zip, and related packages. It is excluded from git and regenerated with <code>okr sync</code>. Check these sources when making claims about Shiny internals.</p>
 <div class="section level2">
 <h2 id="rules-for-changes">Rules for changes<a class="anchor" aria-label="anchor" href="#rules-for-changes"></a></h2>
-<ul><li>Never use <code>shiny:::</code> in package code. Feature-detect and degrade when something is missing (<code>MockShinySession$restoreContext</code> is <code>NULL</code>).</li>
-<li>Never <code><a href="https://rdrr.io/r/base/serialize.html" class="external-link">unserialize()</a></code>/<code><a href="https://rdrr.io/r/base/readRDS.html" class="external-link">readRDS()</a></code> user-supplied data unless the caller passed <code>trust = TRUE</code>. JSON and bundles must be safe to open; validate archive entries before extracting.</li>
+<ul><li>Never use <code>shiny:::</code> in package code. Check whether a feature is available and provide a fallback when it is missing. For example, <code>MockShinySession$restoreContext</code> is <code>NULL</code>.</li>
+<li>Never call <code><a href="https://rdrr.io/r/base/serialize.html" class="external-link">unserialize()</a></code> or <code><a href="https://rdrr.io/r/base/readRDS.html" class="external-link">readRDS()</a></code> on data supplied by a user unless the caller passed <code>trust = TRUE</code>. JSON and bundles must be safe to open. Check archive entries before extracting them.</li>
 <li>No timers or sleeps on the R side to wait for the UI.</li>
 <li>Wrap every read of <code>input</code> inside <code>snap_*()</code> functions in <code><a href="https://rdrr.io/pkg/shiny/man/isolate.html" class="external-link">shiny::isolate()</a></code>.</li>
 <li>Send messages to the client through <code>session$rootScope()</code> with fully namespaced ids; detect modules with <code>inherits(session, "session_proxy")</code>.</li>
 <li>Keep hidden internal inputs prefixed <code>.shinysnap_</code> and marked unserializable.</li>
-<li>Every input that enters a restore ends up in the report with a status; nothing is dropped silently.</li>
-<li>Never return a promise from an example or helper observer; end with <code>NULL</code> when the last expression is a <code><a href="https://rstudio.github.io/promises/reference/then.html" class="external-link">promises::then()</a></code>/<code>catch()</code>. See “The handle instead of a promise” in <code>DESIGN.md</code>.</li>
-<li>The JSON format is normative in <code>vignettes/format-spec.Rmd</code>. A change to the codec is a change to that vignette, and an incompatible change bumps <code>format</code>.</li>
-<li>Every claim about a binding’s wire format is backed by a browser test that runs the real binding. When adding a binding to the built-in restorer table, add it to an example app and assert its round trip in a browser test.</li>
+<li>Include every input considered for a restore in the report, with a status. Do not drop inputs silently.</li>
+<li>Never return a promise from an example or helper observer; end with <code>NULL</code> when the last expression is a <code><a href="https://rstudio.github.io/promises/reference/then.html" class="external-link">promises::then()</a></code>/<code>catch()</code>. See “Why the return value is a handle” in <code>DESIGN.md</code>.</li>
+<li>
+<code>vignettes/format-spec.Rmd</code> defines the JSON format. Update it whenever the encoding or decoding rules change. Increase <code>format</code> for an incompatible change.</li>
+<li>Back every claim about a binding’s message format with a browser test that runs the actual binding. When adding a restorer to the package, add the input to an example app and test that saving and restoring it preserves its value in the browser.</li>
 <li>Never export anything named <code>snapshot*</code> (shiny’s test machinery owns that family); all exports use the <code>snap_</code> prefix. <code>tests/testthat/test-namespace.R</code> enforces it.</li>
 </ul></div>
 <div class="section level2">
 <h2 id="workflow">Workflow<a class="anchor" aria-label="anchor" href="#workflow"></a></h2>
-<p>Each unit of work ends with <code>devtools::document()</code>, <code>devtools::test()</code>, <code>devtools::check()</code> at 0 errors / 0 warnings / 0 notes (the “New submission” note under <code>--as-cran</code> is the only accepted one), <code>styler::style_pkg()</code>, and one commit. Run the check with the browser tests enabled at least once:</p>
+<p>For each unit of work, run <code>devtools::document()</code>, <code>devtools::test()</code>, <code>devtools::check()</code>, and <code>styler::style_pkg()</code>, then make one commit. Checks must finish with 0 errors, 0 warnings, and 0 notes. The only exception is the “New submission” note under <code>--as-cran</code>. Run the check with browser tests enabled at least once:</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">rcmdcheck</span><span class="fu">::</span><span class="fu"><a href="http://r-lib.github.io/rcmdcheck/reference/rcmdcheck.html" class="external-link">rcmdcheck</a></span><span class="op">(</span><span class="st">"."</span>, args <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"--no-manual"</span>, <span class="st">"--as-cran"</span><span class="op">)</span>,</span>
 <span>  check_dir <span class="op">=</span> <span class="st">"/tmp/shinysnap-check"</span>, env <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>NOT_CRAN <span class="op">=</span> <span class="st">"true"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <p>Practicalities:</p>
 <ul><li>
 <code>Rscript -e '...'</code> mangles backslashes in R string literals on this machine. Feed scripts through <code>Rscript - &lt;&lt;'EOF' ... EOF</code>.</li>
-<li>Ad-hoc shinytest2 scripts need <code>NOT_CRAN=true</code> in the environment or <code>AppDriver$new()</code> refuses to start. Chrome is found via <code><a href="https://rstudio.github.io/chromote/reference/find_chrome.html" class="external-link">chromote::find_chrome()</a></code>.</li>
-<li>Browser tests must use <code>start_app()</code>, which registers app cleanup and starts the suite’s shared browser with <code>TMPDIR</code>, <code>TMP</code>, and <code>TEMP</code> inside an owned temporary directory. Suite teardown closes Chrome before removing that directory; <code>AppDriver$stop()</code> alone only closes a browser session and can leave <code>com.google.Chrome.*</code> detritus in the check’s temporary directory. Keep the directory prefix short: the nested check path plus Chrome’s <code>SingletonSocket</code> path must fit Linux’s 108-byte Unix-domain socket address. Normalize filesystem paths before comparing them in cross-platform tests.</li>
-<li>When the R side sends a message but nothing happens in the browser, inspect <code>window.shinysnap.transaction()</code> and set <code>window.shinysnap.debug = true</code> (or <code>snap_enable(verbose = TRUE)</code>) to get per-input console logs; <code>app$get_logs()</code> shows them. A page stuck in <code>shiny-busy</code> after a restore usually means an observer returned a promise.</li>
+<li>Standalone shinytest2 scripts need <code>NOT_CRAN=true</code> in the environment or <code>AppDriver$new()</code> refuses to start. Chrome is found via <code><a href="https://rstudio.github.io/chromote/reference/find_chrome.html" class="external-link">chromote::find_chrome()</a></code>.</li>
+<li>Browser tests must use <code>start_app()</code>, which registers app cleanup and starts the suite’s shared browser with <code>TMPDIR</code>, <code>TMP</code>, and <code>TEMP</code> inside a temporary directory managed by the suite. Cleanup closes Chrome before removing that directory. <code>AppDriver$stop()</code> only closes a browser session and can leave <code>com.google.Chrome.*</code> files in the check’s temporary directory. Keep the directory prefix short: the nested check path plus Chrome’s <code>SingletonSocket</code> path must fit the Linux limit of 108 bytes for a Unix domain socket address. Normalize file paths before comparing them in tests that run on multiple platforms.</li>
+<li>When the R side sends a message but nothing happens in the browser, inspect <code>window.shinysnap.transaction()</code> and set <code>window.shinysnap.debug = true</code> (or <code>snap_enable(verbose = TRUE)</code>) to get console logs for each input; <code>app$get_logs()</code> shows them. A page stuck in <code>shiny-busy</code> after a restore usually means an observer returned a promise.</li>
 <li>
-<code>devtools::test()</code> runs the browser suites (about a minute each); use <code>filter =</code> for a fast loop. Names: <code>codec</code>, <code>io</code>, <code>snapshot</code>, <code>take</code>, <code>ui</code>, <code>restore-server</code>, <code>restorers</code>, <code>interop</code>, <code>namespace</code>, <code>browser-0N-*</code>. Beware that <code>filter = "ui"</code> also matches <code>browser-02-dynamic-ui</code>.</li>
-<li>Under <code>covr</code>, <code><a href="https://rdrr.io/r/base/identical.html" class="external-link">identical()</a></code> against <code>restorer_*</code> functions fails because <code>builtin_restorers</code> captured the closures at build time; compare behavior, not identity. <code>restorers-builtin.R</code> shows falsely low coverage for the same reason; real coverage is about 96 percent.</li>
+<code>devtools::test()</code> runs the browser suites (about a minute each); use <code>filter =</code> to run a smaller selection. Names: <code>codec</code>, <code>io</code>, <code>snapshot</code>, <code>take</code>, <code>ui</code>, <code>restore-server</code>, <code>restorers</code>, <code>interop</code>, <code>namespace</code>, <code>browser-0N-*</code>. Beware that <code>filter = "ui"</code> also matches <code>browser-02-dynamic-ui</code>.</li>
+<li>Under <code>covr</code>, <code><a href="https://rdrr.io/r/base/identical.html" class="external-link">identical()</a></code> against <code>restorer_*</code> functions fails because <code>builtin_restorers</code> captured the closures at build time; compare behavior instead. <code>restorers-builtin.R</code> shows falsely low coverage for the same reason; actual coverage is about 96 percent.</li>
 <li>
 <code><a href="https://pkgdown.r-lib.org/reference/check_pkgdown.html" class="external-link">pkgdown::check_pkgdown()</a></code> must pass after adding an exported topic; the reference index in <code>_pkgdown.yml</code> lists topics by group.</li>
 </ul></div>
 <div class="section level2">
 <h2 id="testing-conventions">Testing conventions<a class="anchor" aria-label="anchor" href="#testing-conventions"></a></h2>
 <ul><li>
-<code>testServer()</code> tests simulate the client: replace the controller’s <code>send</code> field to capture outgoing messages, set <code>.shinysnap_ready</code> and <code>.shinysnap_inventory</code> with <code>session$setInputs()</code>, and answer a restore by setting <code>.shinysnap_result</code> to <code>list(txn, elapsed, timedOut, results)</code>. <code>settle_promise()</code> in <code>helper-promise.R</code> drives the event loop until a promise (or a restore handle) settles.</li>
+<code>testServer()</code> tests simulate the client: replace the controller’s <code>send</code> field to capture outgoing messages, set <code>.shinysnap_ready</code> and <code>.shinysnap_inventory</code> with <code>session$setInputs()</code>, and answer a restore by setting <code>.shinysnap_result</code> to <code>list(txn, elapsed, timedOut, results)</code>. <code>settle_promise()</code> in <code>helper-promise.R</code> drives the event loop until a promise or restore handle completes.</li>
 <li>Browser tests use the example apps under <code>inst/examples/</code> through shinytest2 with <code>variant = NULL</code> and read state with <code>exportTestValues()</code> (<code>snapshot</code> as JSON text, <code>reports</code> as lists) rather than screenshots. Wait with <code>wait_for_value()</code> on a value that changes (<code>ignore = list(&lt;previous value&gt;)</code>); never <code><a href="https://rdrr.io/r/base/Sys.sleep.html" class="external-link">Sys.sleep()</a></code>. Helpers live in <code>helper-browser.R</code> (<code>start_app()</code>, <code>wait_for_inventory()</code>, <code>restore_json()</code>, <code>restore_upload()</code>, <code>expect_all_restored()</code>).</li>
-<li>A restore settles on the client’s quiet period, which normally beats the timeout, so a never-appearing input is <code>missing</code> with <code>timed_out = FALSE</code>. Do not write a browser test that expects a timeout; the timeout branch is covered server-side.</li>
+<li>A restore normally finishes after a quiet period in the browser, before the timeout. An input that never appears is therefore <code>missing</code> with <code>timed_out = FALSE</code>. Do not write a browser test that expects a timeout; tests on the server cover that case.</li>
 </ul></div>
 <div class="section level2">
 <h2 id="coding-and-documentation-conventions">Coding and documentation conventions<a class="anchor" aria-label="anchor" href="#coding-and-documentation-conventions"></a></h2>
-<ul><li>Base-R-leaning, dependency-light. Imports are added only when first used (a declared but unused import is a check note). Use <code>pkg::fun()</code>; the one <code>@importFrom</code> is <code>R6Class</code>.</li>
-<li>roxygen2 with markdown; every export has <code>@returns</code> and <code>@examples</code> (server-side functions guard examples with <code>if (interactive())</code>); internal functions use <code>@noRd</code>.</li>
+<ul><li>Prefer base R and keep dependencies few. Add an import only when it is first used; an unused import causes a check note. Use <code>pkg::fun()</code>. The only <code>@importFrom</code> is <code>R6Class</code>.</li>
+<li>Use roxygen2 with markdown. Every export needs <code>@returns</code> and <code>@examples</code>. Guard examples for server functions with <code>if (interactive())</code>. Use <code>@noRd</code> for internal functions.</li>
 <li>Errors are classed: everything inherits <code>shinysnap_error</code>, with specific classes such as <code>shinysnap_format_error</code>, <code>shinysnap_unsupported_value</code>, <code>shinysnap_unknown_type</code>, <code>shinysnap_untrusted</code> (a warning), <code>shinysnap_cancelled</code>, <code>shinysnap_restore_error</code>, <code>shinysnap_unsafe_bundle</code>, <code>shinysnap_no_session</code>. Raise them with <code>snap_abort()</code>/<code>snap_warn()</code> and test with <code>expect_error(class = )</code>.</li>
 <li>Prose: “snapshot file”, “saved state”, “take/restore a snapshot”; avoid “snap” as a noun. Example apps and documentation use generic terms (models, weights, preferences).</li>
+<li>Write direct sentences that explain what the reader can do. Define technical terms when they are needed. Avoid jargon such as “normative” and “contract”, and rewrite hyphenated phrases in prose. Keep exact names, paths, code, and standard identifiers as written. The docs in <code>deps-src/ellmer</code>, <code>deps-src/testthat</code>, and <code>deps-src/shinychat</code> are useful examples of the intended style.</li>
 </ul></div>
 <div class="section level2">
-<h2 id="traps-that-are-easy-to-reintroduce">Traps that are easy to reintroduce<a class="anchor" aria-label="anchor" href="#traps-that-are-easy-to-reintroduce"></a></h2>
-<p>Each of these is explained in <code>DESIGN.md</code>; this is the checklist.</p>
+<h2 id="common-mistakes">Common mistakes<a class="anchor" aria-label="anchor" href="#common-mistakes"></a></h2>
+<p><code>DESIGN.md</code> explains the reasons for these rules.</p>
 <ul><li>
 <code>radioButtons</code> wants a scalar value; <code>checkboxGroupInput</code> and <code>selectInput</code> accept arrays. The wrong shape shows up in the browser as <code>n.replace is not a function</code>.</li>
-<li>Applies from the <code>shiny:bound</code> handler must be deferred with <code>setTimeout(fn, 0)</code>, or the element’s initial value overwrites the restored one.</li>
+<li>Defer values applied from the <code>shiny:bound</code> handler with <code>setTimeout(fn, 0)</code>. Otherwise, the element’s initial value overwrites the restored one.</li>
 <li>
 <code>typed(type, ...)</code> has a formal named <code>type</code>; a wrapper with a <code>type</code> field (the attachment record) must be built by hand.</li>
 <li>
 <code>zip::zip(mode = "cherry-pick")</code> stores nested files under their base names; the bundle writer uses <code>mode = "mirror"</code>.</li>
-<li>shiny’s <code>toJSON()</code> turns named atomic vectors into objects (with a warning); restorer payloads strip names.</li>
+<li>shiny’s <code>toJSON()</code> turns named atomic vectors into objects (with a warning). Remove names from values in restorer messages.</li>
 <li>
 <code>MockShinySession$clientData</code> reports a numeric <code>url_port</code>, and its namespace prefix is <code>mock-session-</code> even at the root.</li>
 <li>R’s <code>%OS3</code> truncates; the codec rounds POSIXct to milliseconds itself.</li>

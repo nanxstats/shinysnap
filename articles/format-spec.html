@@ -74,19 +74,21 @@
       <img src="../logo.png" class="logo" alt=""><h1>The snapshot file format</h1>
             
       
-      <small class="dont-index">Source: <a href="https://github.com/nanxstats/shinysnap/blob/v0.1.0/vignettes/format-spec.Rmd" class="external-link"><code>vignettes/format-spec.Rmd</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/nanxstats/shinysnap/blob/main/vignettes/format-spec.Rmd" class="external-link"><code>vignettes/format-spec.Rmd</code></a></small>
       <div class="d-none name"><code>format-spec.Rmd</code></div>
     </div>
 
     
     
-<p>This is the normative description of the files shinysnap writes and
-reads. The current format version is 1. Readers accept every earlier
-version and convert on read; the number is bumped only for incompatible
-changes. The <code>app$version</code> field is for the <em>app’s</em>
-migrations (the <code>migrate</code> hook of
-<code><a href="../reference/snap_restore.html">snap_restore()</a></code>); the <code>format</code> field is for the
-package’s.</p>
+<p>This vignette defines the snapshot file format, including how R
+values are stored in JSON and how uploaded files are included in zip
+bundles.</p>
+<p>The current format version is 1. The version increases only when a
+change is incompatible with earlier readers. shinysnap reads older
+formats and converts them to the current one. The <code>format</code>
+field tracks these package changes. Separately, <code>app$version</code>
+records your app’s version so that <code><a href="../reference/snap_restore.html">snap_restore()</a></code> can pass
+it to your <code>migrate</code> function.</p>
 <div class="section level2">
 <h2 id="the-snapshot-object">The snapshot object<a class="anchor" aria-label="anchor" href="#the-snapshot-object"></a>
 </h2>
@@ -120,6 +122,10 @@ package’s.</p>
 <span><span class="co">#&gt;  $ attachments: list()</span></span>
 <span><span class="co">#&gt;  $ meta       : list()</span></span></code></pre></div>
 <table class="table">
+<colgroup>
+<col width="50%">
+<col width="50%">
+</colgroup>
 <thead><tr class="header">
 <th>field</th>
 <th>content</th>
@@ -146,11 +152,12 @@ package’s.</p>
 </tr>
 <tr class="odd">
 <td><code>inputs</code></td>
-<td>named list of input values, keyed by fully namespaced id</td>
+<td>named list of input values, using full ids with any module
+prefixes</td>
 </tr>
 <tr class="even">
 <td><code>values</code></td>
-<td>named list of server-side values</td>
+<td>named list of values saved from the server</td>
 </tr>
 <tr class="odd">
 <td><code>bindings</code></td>
@@ -162,91 +169,103 @@ package’s.</p>
 </tr>
 <tr class="odd">
 <td><code>meta</code></td>
-<td>free-form, user-supplied</td>
+<td>any additional information supplied by the app</td>
 </tr>
 </tbody>
 </table>
 <p><code>inputs</code> and <code>values</code> hold ordinary R values,
-exactly what <code>input$x</code> returns. The encoding below is applied
-at write and read time only.</p>
+like those returned by <code>input$x</code>. They are converted to the
+forms below only when writing a file, and converted back when reading
+it.</p>
 </div>
 <div class="section level2">
 <h2 id="the-json-file">The JSON file<a class="anchor" aria-label="anchor" href="#the-json-file"></a>
 </h2>
-<p>A file is one JSON object with the keys above, in that order,
-pretty-printed with two-space indentation and a trailing newline, in
-UTF-8. Input ids are written in the order captured, which
-<code><a href="../reference/snap_take.html">snap_take()</a></code> sorts, so files of the same state are
-byte-identical and diffs in version control are meaningful. A container
-is written on one line when it fits in 80 columns and one element per
-line otherwise.</p>
+<p>A file contains one JSON object with the keys above, in that order.
+It uses UTF-8, an indent of two spaces, and a newline at the end. Input
+ids are written in their order in the snapshot; <code><a href="../reference/snap_take.html">snap_take()</a></code>
+sorts them. This consistent layout makes changes easier to review in
+version control. An object or array is written on one line if it fits in
+80 columns, or with one element per line otherwise.</p>
 <div class="section level3">
 <h3 id="encoding-rules">Encoding rules<a class="anchor" aria-label="anchor" href="#encoding-rules"></a>
 </h3>
+<p>JSON can represent numbers, strings, booleans, arrays, objects, and
+<code>null</code>. For R values that need more information, shinysnap
+uses a JSON object with a <code>$type</code> field. These objects are
+called <em>typed wrappers</em> below.</p>
 <ol style="list-style-type: decimal">
-<li>
-<code>NULL</code> is <code>null</code>.</li>
-<li>An atomic vector of length one without names is a JSON scalar;
-longer vectors are arrays. Since R has no scalar type, a scalar and a
-one-element array read back to the same value. A vector of length zero
+<li><p><code>NULL</code> is <code>null</code>.</p></li>
+<li><p>An atomic vector of length one without names is a JSON scalar;
+longer vectors are arrays. Since R has no scalar type, a scalar and an
+array of length one read back to the same value. A vector of length zero
 is a typed wrapper,
 <code>{"$type": "&lt;storage&gt;", "value": []}</code>, because a bare
-<code>[]</code> has no type.</li>
-<li>Logicals are <code>true</code>/<code>false</code>, strings are
-escaped per RFC 8259 with non-ASCII kept as UTF-8, integers are plain
-digit runs, and doubles are written with the fewest digits that read
-back to the same value (<code><a href="https://nanx.me/zmij/reference/format_double.html" class="external-link">zmij::format_double()</a></code>). A finite
-double always contains a <code>.</code> or an <code>e</code>, so
-<code>1</code> is an integer and <code>1.0</code> a double.</li>
-<li>
-<code>NA</code> inside a vector of length greater than one is
-<code>null</code> at that position; the other elements fix the type. A
-vector that is entirely <code>NA</code>, including a single
+<code>[]</code> has no type.</p></li>
+<li><p>Logicals are <code>true</code> or <code>false</code>. Strings are
+escaped as required by RFC 8259, with characters outside ASCII kept as
+UTF-8. Integers use digits without a decimal point. Doubles use the
+fewest digits that read back to the same value, as given by
+<code><a href="https://nanx.me/zmij/reference/format_double.html" class="external-link">zmij::format_double()</a></code>. A finite double always contains a
+<code>.</code> or an <code>e</code>, so <code>1</code> is an integer and
+<code>1.0</code> a double.</p></li>
+<li><p><code>NA</code> inside a vector of length greater than one is
+<code>null</code> at that position; the other elements determine the
+type. A vector that is entirely <code>NA</code>, including a single
 <code>NA</code>, is a typed wrapper with <code>null</code> values, so
 that <code>NULL</code>, <code>NA</code>, and <code>NA_character_</code>
-stay distinct.</li>
-<li>Non-finite doubles use the strings <code>"inf"</code>,
-<code>"-inf"</code>, and <code>"NaN"</code> inside a <code>double</code>
-wrapper, which is used only when such a value is present.</li>
-<li>Named atomic vectors are
-<code>{"$type": "&lt;storage&gt;", "names": [...], "value": [...]}</code>.</li>
+stay distinct.</p></li>
+<li><p>Infinite values and <code>NaN</code> use the strings
+<code>"inf"</code>, <code>"-inf"</code>, and <code>"NaN"</code> inside a
+<code>double</code> wrapper, which is used only when such a value is
+present.</p></li>
+<li><p>Named atomic vectors are
+<code>{"$type": "&lt;storage&gt;", "names": [...], "value": [...]}</code>.</p></li>
 <li>
-<code>Date</code> is
-<code>{"$type": "Date", "value": ["2024-01-01", null]}</code>;
-<code>POSIXct</code> is
-<code>{"$type": "POSIXct", "tz": "UTC", "value": ["2024-01-01T10:00:00.000Z"]}</code>,
-written in the stored time zone at millisecond precision (the
-<code>tz</code> key is absent when the value has no time zone attribute,
-and the offset is <code>Z</code> for UTC and for the session time zone,
-which is formatted in UTC); <code>difftime</code> is
-<code>{"$type": "difftime", "units": "secs", "value": [...]}</code>; a
-factor is
-<code>{"$type": "factor", "levels": [...], "value": ["a", null]}</code>
-with an <code>"ordered": true</code> flag when ordered.</li>
-<li>A matrix or array is
+<p>Dates, times, durations, and factors use these wrappers:</p>
+<ul>
+<li>
+<code>Date</code>:
+<code>{"$type": "Date", "value": ["2024-01-01", null]}</code>.</li>
+<li>
+<code>POSIXct</code>:
+<code>{"$type": "POSIXct", "tz": "UTC", "value": ["2024-01-01T10:00:00.000Z"]}</code>.
+Values are written in the stored time zone and rounded to milliseconds.
+The <code>tz</code> key is omitted if there is no time zone attribute.
+UTC values use the offset <code>Z</code>; values using the session’s
+time zone are formatted in UTC and also use <code>Z</code>.</li>
+<li>
+<code>difftime</code>:
+<code>{"$type": "difftime", "units": "secs", "value": [...]}</code>.</li>
+<li>Factors:
+<code>{"$type": "factor", "levels": [...], "value": ["a", null]}</code>,
+with <code>"ordered": true</code> for ordered factors.</li>
+</ul>
+</li>
+<li><p>A matrix or array is
 <code>{"$type": "array", "storage": "double", "dim": [2, 3], "dimnames": [["a", "b"], null], "value": [...]}</code>
-with the values in column-major order (<code>"matrix"</code> is accepted
-as an alias on read).</li>
-<li>A data frame is
+with the values ordered by column, as in R. The reader also accepts
+<code>"matrix"</code> as the type.</p></li>
+<li><p>A data frame is
 <code>{"$type": "data.frame", "nrow": 3, "columns": {"x": ..., "y": ...}}</code>,
 with a <code>"row.names"</code> array when the row names are not the
-automatic ones. Tibbles are written as data frames.</li>
-<li>A list whose names are all present and unique is a JSON object. Any
-other list (unnamed, partially named, or empty) is
+automatic ones. Tibbles are written as data frames.</p></li>
+<li><p>A list whose names are all present and unique is a JSON object.
+Any other list (unnamed, partially named, or empty) is
 <code>{"$type": "list", "names": [...], "value": [...]}</code> with
 <code>names</code> omitted when absent, except that an unnamed list with
-at least one element that is not a scalar is written as a bare array,
-which reads back as a list.</li>
-<li>Anything else (environments, functions, S4 and R6 objects, unknown
-classes) is an error by default. With <code>unsupported = "rds"</code>
-it becomes
+at least one element that is not a scalar is written as a JSON array,
+which reads back as a list.</p></li>
+<li><p>Anything else (environments, functions, S4 and R6 objects,
+unknown classes) is an error by default. With
+<code>unsupported = "rds"</code> it becomes
 <code>{"$type": "rds", "class": [...], "base64": "..."}</code> (in a
 bundle,
 <code>{"$type": "rds", "class": [...], "path": "objects/1-values_fit.rds"}</code>).
 Reading these requires <code>trust = TRUE</code>; otherwise they decode
-to <code>NULL</code> with one warning that lists them.</li>
-<li>Attributes other than the ones above are dropped on write. The
-format describes values, not R objects.</li>
+to <code>NULL</code> with one warning that lists them.</p></li>
+<li><p>Attributes other than those listed above are dropped when
+writing.</p></li>
 </ol>
 <p>Keys starting with <code>$</code> are reserved.</p>
 </div>
@@ -269,7 +288,7 @@ format describes values, not R objects.</li>
 <span><span class="co">#&gt; {</span></span>
 <span><span class="co">#&gt;   "format": 1,</span></span>
 <span><span class="co">#&gt;   "app": {"name": null, "version": null},</span></span>
-<span><span class="co">#&gt;   "created": "2026-09-18T02:03:55Z",</span></span>
+<span><span class="co">#&gt;   "created": "2026-09-18T07:05:25Z",</span></span>
 <span><span class="co">#&gt;   "producer": {"shinysnap": "0.1.0", "shiny": "1.14.0", "r": "4.6.1"},</span></span>
 <span><span class="co">#&gt;   "inputs": {</span></span>
 <span><span class="co">#&gt;     "n": 1,</span></span>
@@ -310,20 +329,27 @@ format describes values, not R objects.</li>
 <div class="section level3">
 <h3 id="reading">Reading<a class="anchor" aria-label="anchor" href="#reading"></a>
 </h3>
-<p>The reader parses the text with jsonlite
-(<code>simplifyVector = FALSE</code>) and walks the tree. Arrays whose
-elements are all scalars or <code>null</code> become atomic vectors,
-typed from the non-null elements (integer when every number parsed as an
-integer, double otherwise); mixing kinds is an error. Objects with a
-<code>$type</code> key go through the typed decoders; other objects
-become named lists; arrays with a non-scalar element become unnamed
-lists. A <code>$type</code> the reader does not know is an error naming
-the id, unless <code>unknown_types = "keep"</code> keeps the raw value.
-Duplicate keys are an error.</p>
-<p>The round-trip contract: for every supported type, writing and
-reading gives a value <code><a href="https://rdrr.io/r/base/identical.html" class="external-link">identical()</a></code> to the original, and
-<code>snap_read(snap_write(x))</code> is identical to <code>x</code>
-except for <code>producer</code>, which the writer always stamps.</p>
+<p>The reader uses jsonlite with <code>simplifyVector = FALSE</code>,
+then converts each part of the result to an R value:</p>
+<ul>
+<li>Arrays containing only scalars or <code>null</code> become atomic
+vectors. The elements other than <code>null</code> determine the type.
+Numeric arrays become integer vectors if every number was parsed as an
+integer, and double vectors otherwise. Mixing other types is an
+error.</li>
+<li>Objects with a <code>$type</code> key are decoded using the rules
+above. Other objects become named lists.</li>
+<li>Arrays containing an object or another array become unnamed
+lists.</li>
+</ul>
+<p>An unknown <code>$type</code> raises an error that identifies the
+value. Use <code>unknown_types = "keep"</code> to keep its raw
+representation instead. Duplicate keys are always an error.</p>
+<p>Writing and reading a supported value preserves it, subject to the
+precision and attribute rules above. The following example checks this
+with <code><a href="https://rdrr.io/r/base/identical.html" class="external-link">identical()</a></code>. When you write a snapshot,
+<code>producer</code> is updated to record the versions of shinysnap,
+shiny, and R doing the writing.</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>inputs <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
 <span>  sum <span class="op">=</span> <span class="fl">0.1</span> <span class="op">+</span> <span class="fl">0.2</span>, tiny <span class="op">=</span> <span class="fl">1e-300</span>, dates <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/as.Date.html" class="external-link">as.Date</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"2024-01-01"</span>, <span class="cn">NA</span><span class="op">)</span><span class="op">)</span>,</span>
@@ -337,7 +363,7 @@ except for <code>producer</code>, which the writer always stamps.</p>
 <div class="section level2">
 <h2 id="the-bundle--zip">The bundle (<code>.zip</code>)<a class="anchor" aria-label="anchor" href="#the-bundle--zip"></a>
 </h2>
-<p>A bundle is a zip archive with:</p>
+<p>A bundle is a zip archive containing:</p>
 <ul>
 <li>
 <code>manifest.json</code>: exactly the JSON above, with an
@@ -347,23 +373,23 @@ the fields are arrays when a <code><a href="https://rdrr.io/pkg/shiny/man/fileIn
 files.</li>
 <li>
 <code>attachments/&lt;id&gt;/&lt;file name&gt;</code>: the uploaded
-files. Names are reduced to <code>A-Z a-z 0-9 . _ -</code> and
-disambiguated with a counter when they repeat.</li>
+files. Names use only <code>A-Z a-z 0-9 . _ -</code>. A counter
+distinguishes files whose names repeat.</li>
 <li>
 <code>objects/&lt;n&gt;-&lt;path&gt;.rds</code>: values written with
 <code>unsupported = "rds"</code>.</li>
 </ul>
-<p>On read, the archive is checked before extraction: entries with
-<code>..</code> or absolute paths are refused, and the uncompressed
-total must stay under
-<code>getOption("shinysnap.max_bundle_bytes", 100 * 1024^2)</code>. It
-is then extracted into a fresh temporary directory; the manifest’s paths
-must point inside it, under <code>attachments/</code> or
-<code>objects/</code>, at regular files.
-<code>snap_attachment(x, id)</code> returns the extracted paths. The
-snapshot’s <code>inputs</code> never contain file input values, because
-a browser’s file input cannot be set programmatically; restore hooks can
-read the attachment instead.</p>
+<p>Before extracting a bundle, shinysnap rejects entries with
+<code>..</code> path components or absolute paths. The total size of the
+uncompressed files must be below
+<code>getOption("shinysnap.max_bundle_bytes", 100 * 1024^2)</code>.
+Files are extracted into a new temporary directory. Paths in the
+manifest must point to regular files inside its
+<code>attachments/</code> or <code>objects/</code> directories.</p>
+<p>Use <code>snap_attachment(x, id)</code> to get the extracted file
+paths. Browsers do not allow code to set the value of a file input, so
+uploaded files are kept in <code>attachments</code>, separate from
+<code>inputs</code>. Your restore hooks can read them from there.</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">upload</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/tempfile.html" class="external-link">tempfile</a></span><span class="op">(</span>fileext <span class="op">=</span> <span class="st">".csv"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/writeLines.html" class="external-link">writeLines</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"x,y"</span>, <span class="st">"1,2"</span><span class="op">)</span>, <span class="va">upload</span><span class="op">)</span></span>
@@ -383,10 +409,10 @@ read the attachment instead.</p>
 <h2 id="the--rds-format">The <code>.rds</code> format<a class="anchor" aria-label="anchor" href="#the--rds-format"></a>
 </h2>
 <p><code>snap_write(format = "rds")</code> stores the R object with
-<code><a href="https://rdrr.io/r/base/readRDS.html" class="external-link">saveRDS()</a></code>. It is neither readable nor safe across versions,
-and <code><a href="../reference/snap_write.html">snap_read()</a></code> refuses it unless
-<code>trust = TRUE</code>, because unserializing a file runs arbitrary
-code paths. It exists for people who really want it.</p>
+<code><a href="https://rdrr.io/r/base/readRDS.html" class="external-link">saveRDS()</a></code>. These files cannot be read in a text editor and
+may not work across versions. Reading serialized R objects can execute
+code, so <code><a href="../reference/snap_write.html">snap_read()</a></code> requires <code>trust = TRUE</code> to
+open them. Use this format only for files you trust.</p>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>
