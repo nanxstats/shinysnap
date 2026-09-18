@@ -34,6 +34,7 @@ withr = "*"
 zip = "*"
 zmij = "*"
 httpuv = "*"
+testthat = "*"
 
 [references]
 shiny = "rstudio/shiny"

@@ -14,11 +14,14 @@ knitr::opts_chunk$set(
 )
 ```
 
-This is the normative description of the files shinysnap writes and reads.
-The current format version is 1. Readers accept every earlier version and
-convert on read; the number is bumped only for incompatible changes. The
-`app$version` field is for the *app's* migrations (the `migrate` hook of
-`snap_restore()`); the `format` field is for the package's.
+This vignette defines the snapshot file format, including how R values
+are stored in JSON and how uploaded files are included in zip bundles.
+
+The current format version is 1. The version increases only when a change
+is incompatible with earlier readers. shinysnap reads older formats and
+converts them to the current one. The `format` field tracks these package
+changes. Separately, `app$version` records your app's version so that
+`snap_restore()` can pass it to your `migrate` function.
 
 ## The snapshot object
 
@@ -43,58 +46,68 @@ str(unclass(snap))
 | `app` | `name` and `version` of the app; either may be `NULL` |
 | `created` | when the state was captured, ISO 8601 in UTC |
 | `producer` | versions of shinysnap, shiny, and R that wrote the file |
-| `inputs` | named list of input values, keyed by fully namespaced id |
-| `values` | named list of server-side values |
+| `inputs` | named list of input values, using full ids with any module prefixes |
+| `values` | named list of values saved from the server |
 | `bindings` | named character vector, input id to client binding name |
 | `attachments` | file records, present in bundles only |
-| `meta` | free-form, user-supplied |
+| `meta` | any additional information supplied by the app |
 
-`inputs` and `values` hold ordinary R values, exactly what `input$x`
-returns. The encoding below is applied at write and read time only.
+`inputs` and `values` hold ordinary R values, like those returned by
+`input$x`. They are converted to the forms below only when writing a
+file, and converted back when reading it.
 
 ## The JSON file
 
-A file is one JSON object with the keys above, in that order, pretty-printed
-with two-space indentation and a trailing newline, in UTF-8. Input ids are
-written in the order captured, which `snap_take()` sorts, so files of the
-same state are byte-identical and diffs in version control are meaningful.
-A container is written on one line when it fits in 80 columns and one
-element per line otherwise.
+A file contains one JSON object with the keys above, in that order. It
+uses UTF-8, an indent of two spaces, and a newline at the end. Input ids
+are written in their order in the snapshot; `snap_take()` sorts them.
+This consistent layout makes changes easier to review in version control.
+An object or array is written on one line if it fits in 80 columns, or
+with one element per line otherwise.
 
 ### Encoding rules
 
+JSON can represent numbers, strings, booleans, arrays, objects, and
+`null`. For R values that need more information, shinysnap uses a JSON
+object with a `$type` field. These objects are called *typed wrappers*
+below.
+
 1. `NULL` is `null`.
 2. An atomic vector of length one without names is a JSON scalar; longer
-   vectors are arrays. Since R has no scalar type, a scalar and a
-   one-element array read back to the same value. A vector of length zero
+   vectors are arrays. Since R has no scalar type, a scalar and an
+   array of length one read back to the same value. A vector of length zero
    is a typed wrapper, `{"$type": "<storage>", "value": []}`, because a
    bare `[]` has no type.
-3. Logicals are `true`/`false`, strings are escaped per RFC 8259 with
-   non-ASCII kept as UTF-8, integers are plain digit runs, and doubles are
-   written with the fewest digits that read back to the same value
-   (`zmij::format_double()`). A finite double always contains a `.` or an
-   `e`, so `1` is an integer and `1.0` a double.
+3. Logicals are `true` or `false`. Strings are escaped as required by
+   RFC 8259, with characters outside ASCII kept as UTF-8. Integers use
+   digits without a decimal point. Doubles use the fewest digits that
+   read back to the same value, as given by `zmij::format_double()`.
+   A finite double always contains a `.` or an `e`, so `1` is an integer
+   and `1.0` a double.
 4. `NA` inside a vector of length greater than one is `null` at that
-   position; the other elements fix the type. A vector that is entirely
+   position; the other elements determine the type. A vector that is entirely
    `NA`, including a single `NA`, is a typed wrapper with `null` values, so
    that `NULL`, `NA`, and `NA_character_` stay distinct.
-5. Non-finite doubles use the strings `"inf"`, `"-inf"`, and `"NaN"`
+5. Infinite values and `NaN` use the strings `"inf"`, `"-inf"`, and `"NaN"`
    inside a `double` wrapper, which is used only when such a value is
    present.
 6. Named atomic vectors are `{"$type": "<storage>", "names": [...],
    "value": [...]}`.
-7. `Date` is `{"$type": "Date", "value": ["2024-01-01", null]}`;
-   `POSIXct` is `{"$type": "POSIXct", "tz": "UTC", "value":
-   ["2024-01-01T10:00:00.000Z"]}`, written in the stored time zone at
-   millisecond precision (the `tz` key is absent when the value has no
-   time zone attribute, and the offset is `Z` for UTC and for the session
-   time zone, which is formatted in UTC); `difftime` is `{"$type":
-   "difftime", "units": "secs", "value": [...]}`; a factor is `{"$type":
-   "factor", "levels": [...], "value": ["a", null]}` with an `"ordered":
-   true` flag when ordered.
+7. Dates, times, durations, and factors use these wrappers:
+
+   - `Date`: `{"$type": "Date", "value": ["2024-01-01", null]}`.
+   - `POSIXct`: `{"$type": "POSIXct", "tz": "UTC", "value":
+     ["2024-01-01T10:00:00.000Z"]}`. Values are written in the stored time
+     zone and rounded to milliseconds. The `tz` key is omitted if there
+     is no time zone attribute. UTC values use the offset `Z`; values
+     using the session's time zone are formatted in UTC and also use `Z`.
+   - `difftime`: `{"$type": "difftime", "units": "secs", "value": [...]}`.
+   - Factors: `{"$type": "factor", "levels": [...], "value": ["a", null]}`,
+     with `"ordered": true` for ordered factors.
+
 8. A matrix or array is `{"$type": "array", "storage": "double", "dim":
    [2, 3], "dimnames": [["a", "b"], null], "value": [...]}` with the values
-   in column-major order (`"matrix"` is accepted as an alias on read).
+   ordered by column, as in R. The reader also accepts `"matrix"` as the type.
 9. A data frame is `{"$type": "data.frame", "nrow": 3, "columns": {"x":
    ..., "y": ...}}`, with a `"row.names"` array when the row names are not
    the automatic ones. Tibbles are written as data frames.
@@ -102,15 +115,14 @@ element per line otherwise.
     other list (unnamed, partially named, or empty) is `{"$type": "list",
     "names": [...], "value": [...]}` with `names` omitted when absent,
     except that an unnamed list with at least one element that is not a
-    scalar is written as a bare array, which reads back as a list.
+    scalar is written as a JSON array, which reads back as a list.
 11. Anything else (environments, functions, S4 and R6 objects, unknown
     classes) is an error by default. With `unsupported = "rds"` it becomes
     `{"$type": "rds", "class": [...], "base64": "..."}` (in a bundle,
     `{"$type": "rds", "class": [...], "path": "objects/1-values_fit.rds"}`).
     Reading these requires `trust = TRUE`; otherwise they decode to `NULL`
     with one warning that lists them.
-12. Attributes other than the ones above are dropped on write. The format
-    describes values, not R objects.
+12. Attributes other than those listed above are dropped when writing.
 
 Keys starting with `$` are reserved.
 
@@ -133,18 +145,25 @@ cat(snap_serialize(list(inputs = list(
 
 ### Reading
 
-The reader parses the text with jsonlite (`simplifyVector = FALSE`) and
-walks the tree. Arrays whose elements are all scalars or `null` become
-atomic vectors, typed from the non-null elements (integer when every number
-parsed as an integer, double otherwise); mixing kinds is an error. Objects
-with a `$type` key go through the typed decoders; other objects become
-named lists; arrays with a non-scalar element become unnamed lists. A
-`$type` the reader does not know is an error naming the id, unless
-`unknown_types = "keep"` keeps the raw value. Duplicate keys are an error.
+The reader uses jsonlite with `simplifyVector = FALSE`, then converts each
+part of the result to an R value:
 
-The round-trip contract: for every supported type, writing and reading
-gives a value `identical()` to the original, and `snap_read(snap_write(x))`
-is identical to `x` except for `producer`, which the writer always stamps.
+- Arrays containing only scalars or `null` become atomic vectors. The
+  elements other than `null` determine the type. Numeric arrays become
+  integer vectors if every number was parsed as an integer, and double
+  vectors otherwise. Mixing other types is an error.
+- Objects with a `$type` key are decoded using the rules above. Other
+  objects become named lists.
+- Arrays containing an object or another array become unnamed lists.
+
+An unknown `$type` raises an error that identifies the value. Use
+`unknown_types = "keep"` to keep its raw representation instead.
+Duplicate keys are always an error.
+
+Writing and reading a supported value preserves it, subject to the
+precision and attribute rules above. The following example checks this
+with `identical()`. When you write a snapshot, `producer` is updated to
+record the versions of shinysnap, shiny, and R doing the writing.
 
 ```{r}
 x <- list(inputs = list(
@@ -157,25 +176,27 @@ identical(snap_inputs(back), x$inputs)
 
 ## The bundle (`.zip`)
 
-A bundle is a zip archive with:
+A bundle is a zip archive containing:
 
 - `manifest.json`: exactly the JSON above, with an `attachments` section.
   Each entry is a file record: `{"$type": "file", "name": "data.csv",
   "size": 1234, "type": "text/csv", "path": "attachments/upload/data.csv"}`;
   the fields are arrays when a `fileInput()` held several files.
-- `attachments/<id>/<file name>`: the uploaded files. Names are reduced to
-  `A-Z a-z 0-9 . _ -` and disambiguated with a counter when they repeat.
+- `attachments/<id>/<file name>`: the uploaded files. Names use only
+  `A-Z a-z 0-9 . _ -`. A counter distinguishes files whose names repeat.
 - `objects/<n>-<path>.rds`: values written with `unsupported = "rds"`.
 
-On read, the archive is checked before extraction: entries with `..` or
-absolute paths are refused, and the uncompressed total must stay under
-`getOption("shinysnap.max_bundle_bytes", 100 * 1024^2)`. It is then
-extracted into a fresh temporary directory; the manifest's paths must point
-inside it, under `attachments/` or `objects/`, at regular files.
-`snap_attachment(x, id)` returns the extracted paths. The snapshot's
-`inputs` never contain file input values, because a browser's file input
-cannot be set programmatically; restore hooks can read the attachment
-instead.
+Before extracting a bundle, shinysnap rejects entries with `..` path
+components or absolute paths. The total size of the uncompressed files
+must be below `getOption("shinysnap.max_bundle_bytes", 100 * 1024^2)`.
+Files are extracted into a new temporary directory. Paths in the manifest
+must point to regular files inside its `attachments/` or `objects/`
+directories.
+
+Use `snap_attachment(x, id)` to get the extracted file paths. Browsers
+do not allow code to set the value of a file input, so uploaded files are
+kept in `attachments`, separate from `inputs`. Your restore hooks can
+read them from there.
 
 ```{r}
 upload <- tempfile(fileext = ".csv")
@@ -194,7 +215,7 @@ readLines(snap_attachment(back, "data"))
 
 ## The `.rds` format
 
-`snap_write(format = "rds")` stores the R object with `saveRDS()`. It is
-neither readable nor safe across versions, and `snap_read()` refuses it
-unless `trust = TRUE`, because unserializing a file runs arbitrary code
-paths. It exists for people who really want it.
+`snap_write(format = "rds")` stores the R object with `saveRDS()`. These
+files cannot be read in a text editor and may not work across versions.
+Reading serialized R objects can execute code, so `snap_read()` requires
+`trust = TRUE` to open them. Use this format only for files you trust.

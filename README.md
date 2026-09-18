@@ -4,19 +4,19 @@
 [![R-CMD-check](https://github.com/nanxstats/shinysnap/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/nanxstats/shinysnap/actions/workflows/R-CMD-check.yaml)
 <!-- badges: end -->
 
-shinysnap saves and restores the state of a running Shiny app. It takes a
-*snapshot* (the input values plus any server-side values you register),
-writes it to a plain JSON file that users can keep, share, and diff, and
-restores it later into a different session, without a page reload and
-without `enableBookmarking()`. Inputs inside `renderUI()` that appear
-during the restore receive their values as soon as they exist, so no
-timing code is needed, and a report says what was applied, what never
-appeared, and what failed.
+shinysnap lets users save their work in a Shiny app and return to it later.
+It saves the app's input values, along with any values you choose to keep
+from the server, in a *snapshot file*. Users can download this JSON file,
+share it, and upload it to restore their work in another session.
 
-The word "snapshot" is used in the sense of a virtual machine or file
-system snapshot: a saved state you can write to a file and restore later.
-It has nothing to do with snapshot *testing* (`expect_snapshot` in
-testthat and shinytest2) or with screenshots.
+Restoring a snapshot keeps the app running without reloading the page or
+requiring `enableBookmarking()`. Inputs created by `renderUI()` receive
+their saved values as they appear. A report tells you which inputs were
+restored, which were missing, and which failed.
+
+Here, a snapshot means a copy of the app's state. Snapshot tests in
+testthat and shinytest2 serve a different purpose: they record output
+to check for unexpected changes. shinysnap does not take screenshots.
 
 ## Installation
 
@@ -29,7 +29,8 @@ pak::pak("nanxstats/shinysnap")
 
 ## Example
 
-A complete app with a save button and a restore upload:
+This app lets users download a snapshot file and upload it to restore
+their work:
 
 ``` r
 library(shiny)
@@ -61,7 +62,7 @@ server <- function(input, output, session) {
 shinyApp(ui, server)
 ```
 
-The saved file is readable:
+You can open the saved file in a text editor:
 
 ``` json
 {
@@ -84,19 +85,19 @@ The saved file is readable:
 }
 ```
 
-Uploading it puts the app back into that state: the select is applied,
-the dynamic UI it controls re-renders, and the slider inside it gets its
-value the moment it exists.
+Uploading this file selects the complex model, which creates the `k`
+slider. The slider then receives its saved value.
 
 ## Before and after
 
-Apps that do this by hand collect `reactiveValuesToList(input)` into an
-`.rds` file and, on upload, loop over `session$sendInputMessage()`, add a
-special case for matrix inputs, guard every server-side value with
-`is.null()` for files saved by older versions, and send the values of
-dynamic inputs in waves of `shinyjs::delay()`, because messages for inputs
-that are not on the page yet are dropped silently. With shinysnap, the
-server side of such an app becomes:
+You may already save your app's state with `reactiveValuesToList(input)`
+and an `.rds` file. Restoring it usually takes more work: you need to send
+each value back to its input, handle inputs such as matrices, and provide
+defaults for fields added since the file was saved. Dynamic inputs add
+another problem because Shiny drops messages sent before an input exists.
+
+shinysnap handles these steps for you. You register the values to save
+and provide functions to check files and update values from older versions:
 
 ``` r
 snap_enable(app = "myapp", version = "2.4.0", exclude = c("^btn_", "^nav$"))
@@ -120,21 +121,22 @@ snap_file_restore(
 See `vignette("shinysnap")` for the full comparison and
 `vignette("dynamic-ui")` for how the restore works.
 
-## What is in the box
+## Main functions
 
-- `snap_take()`, `snap_restore()`: the snapshot and the restore
-  transaction, with a report.
-- `snap_write()`, `snap_read()`: JSON files, zip bundles that keep uploaded
-  files, and (behind `trust = TRUE`) `.rds`.
+- `snap_take()` and `snap_restore()` save and restore the app's state.
+  Each restore produces a report.
+- `snap_write()` and `snap_read()` write and read JSON files, zip bundles
+  that include uploaded files, and `.rds` files with `trust = TRUE`.
 - `snap_track()`, `snap_on_save()`, `snap_on_restore()`,
-  `snap_on_restored()`: server-side values and hooks shaped like shiny's
-  bookmarking hooks.
-- `snap_restorer()`: how an input's value becomes the message its binding
-  understands; built-ins for shiny, bslib, and shinyMatrix inputs.
+  and `snap_on_restored()` let you save values from the server and run
+  code when a snapshot is taken or restored.
+- `snap_restorer()` adds support for custom inputs. shinysnap includes
+  support for inputs from shiny, bslib, and shinyMatrix.
 - `snap_download_button()`, `snap_download_handler()`,
-  `snap_file_input()`, `snap_file_restore()`: the UI boilerplate.
-- `snap_as_bookmark_url()`, `snap_as_test_inputs()`, `snap_diff()`:
-  interoperate with bookmarking, `testServer()`, and version control.
+  `snap_file_input()`, and `snap_file_restore()` add controls for saving
+  and restoring snapshot files.
+- `snap_as_bookmark_url()`, `snap_as_test_inputs()`, and `snap_diff()`
+  let you use snapshots with bookmarking, `testServer()`, and version control.
 
 ## License
 

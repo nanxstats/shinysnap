@@ -2,8 +2,8 @@ version = 2
 okr-version = "0.1.10"
 generated = "2026-09-16T00:00:00Z"
 snapshot = "2026-09-16"
-config-digest = "sha256:d8af89d090688c7ff5da64fc836b4347237dab4a05cdc44901fbc83851869a6c"
-environment-digest = "sha256:27af0b1e70db8cf959ca2c2eccca7b7c682de94bcdc6601b35e1409ec78dca63"
+config-digest = "sha256:86fb63bc0d85e7c474dba3ee509f29ec989e89720d1ddb1127e3cd583dbb2418"
+environment-digest = "sha256:929c01833675335b9830c0b6edad3291eabd598cd52d0b4132ad53510aabc814"
 
 [[package]]
 name = "R6"
@@ -165,6 +165,15 @@ source = "cran"
 url = "https://packagemanager.posit.co/cran/2026-09-16/src/contrib/shinytest2_0.5.1.tar.gz"
 fetch-method = "tarball"
 tree-digest = "sha256:8721bc7bed73d8254043b12be75c6414ebac311a4668d88143a5b93b1bcd437e"
+license = "MIT + file LICENSE"
+
+[[package]]
+name = "testthat"
+version = "3.3.2"
+source = "cran"
+url = "https://packagemanager.posit.co/cran/2026-09-16/src/contrib/testthat_3.3.2.tar.gz"
+fetch-method = "tarball"
+tree-digest = "sha256:7ccde326b93dfa6b961ef6366611c486e2bfd278629b16f1ac184dcc49d5569d"
 license = "MIT + file LICENSE"
 
 [[package]]
