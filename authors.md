@@ -8,7 +8,7 @@
 ## Citation
 
 Source:
-[`DESCRIPTION`](https://github.com/nanxstats/shinysnap/blob/main/DESCRIPTION)
+[`DESCRIPTION`](https://github.com/nanxstats/shinysnap/blob/v0.1.0/DESCRIPTION)
 
 Xiao N (2026). *shinysnap: Save and Restore the State of 'shiny'
 Applications*. R package version 0.1.0, <https://nanx.me/shinysnap/>.
