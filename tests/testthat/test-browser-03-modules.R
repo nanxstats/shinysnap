@@ -1,6 +1,5 @@
 test_that("03-modules: snapshots use full ids and namespace tracked values and hooks", {
   app <- start_app("03-modules")
-  on.exit(app$stop())
 
   app$set_inputs(`left-n` = 7, `right-kind` = "quadratic")
   app$click("right-bump")
@@ -32,7 +31,6 @@ test_that("03-modules: snapshots use full ids and namespace tracked values and h
 
 test_that("03-modules: a restore started inside a module restores the whole app", {
   app <- start_app("03-modules")
-  on.exit(app$stop())
   snap <- export_snapshot(app)
   snap$inputs[["left-n"]] <- 3L
   snap$inputs[["right-n"]] <- 4L

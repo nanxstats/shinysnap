@@ -1,6 +1,5 @@
 test_that("02-dynamic-ui: a snapshot contains only the live branch's inputs", {
   app <- start_app("02-dynamic-ui")
-  on.exit(app$stop())
 
   inv <- app$get_value(input = ".shinysnap_inventory")
   expect_true(all(c("method", "a_n", "a_rate", "a_sub", "a_sub_x", "shared") %in% names(inv)))
@@ -57,7 +56,6 @@ dynamic_snapshot <- function(inputs) {
 
 test_that("02-dynamic-ui: with the accelerator, dynamic UI is constructed with the restored values", {
   app <- start_app("02-dynamic-ui")
-  on.exit(app$stop())
   json <- snap_serialize(
     dynamic_snapshot(list(method = "b", b_k = 7L, b_text = "zeta", shared = 55L)),
     pretty = FALSE
@@ -85,7 +83,6 @@ test_that("02-dynamic-ui: with the accelerator, dynamic UI is constructed with t
 
 test_that("02-dynamic-ui: without the accelerator the restored value still beats the default", {
   app <- start_app("02-dynamic-ui")
-  on.exit(app$stop())
   app$set_inputs(use_ctx = FALSE)
   json <- snap_serialize(
     dynamic_snapshot(list(method = "b", b_k = 7L, b_text = "zeta", shared = 55L)),
@@ -109,7 +106,6 @@ test_that("02-dynamic-ui: without the accelerator the restored value still beats
 
 test_that("02-dynamic-ui: an input that never appears is reported missing and the promise resolves", {
   app <- start_app("02-dynamic-ui")
-  on.exit(app$stop())
   app$set_inputs(timeout = 3)
   json <- snap_serialize(
     dynamic_snapshot(list(method = "a", a_n = 42L, ghost = "boo")),
@@ -127,7 +123,6 @@ test_that("02-dynamic-ui: an input that never appears is reported missing and th
 
 test_that("02-dynamic-ui: a second restore cancels the first", {
   app <- start_app("02-dynamic-ui")
-  on.exit(app$stop())
   app$set_inputs(timeout = 8)
   stuck <- snap_serialize(dynamic_snapshot(list(method = "a", ghost = "boo")), pretty = FALSE)
   good <- snap_serialize(dynamic_snapshot(list(method = "b", b_k = 9L)), pretty = FALSE)
@@ -148,7 +143,6 @@ test_that("02-dynamic-ui: a second restore cancels the first", {
 
 test_that("02-dynamic-ui: a saved file restores through the upload control, two levels deep", {
   app <- start_app("02-dynamic-ui")
-  on.exit(app$stop())
   snap <- export_snapshot(app)
   snap$inputs$a_n <- 77L
   snap$inputs$a_rate <- 0.25
