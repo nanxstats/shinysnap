@@ -4,46 +4,49 @@ Initial release.
 
 ## Snapshots
 
-- `snap_take()` captures the inputs that are on the page (as reported by
-  the client script, so values of removed dynamic UI are dropped), the
-  `reactiveValues` registered with `snap_track()`, and the values written
-  by `snap_on_save()` hooks. Action buttons, passwords, values that shiny's
-  serializers mark as unserializable, ids excluded with
-  `setBookmarkExclude()`, and the patterns given to `snap_enable()`,
-  `snap_exclude()`, and `snap_include()` are left out.
-- The snapshot object is a plain list of class `shinysnap`, with
-  `snap_inputs()`, `snap_values()`, `snap_meta()`, and `snap_diff()`.
+- `snap_take()` saves the inputs currently on the page, the
+  `reactiveValues` registered with `snap_track()`, and any values added
+  by `snap_on_save()` hooks. It leaves out inputs whose UI has been
+  removed, action buttons, passwords, and values that Shiny marks as
+  unserializable. It also respects `setBookmarkExclude()` and the
+  selection rules in `snap_enable()`, `snap_exclude()`, and `snap_include()`.
+- Snapshots are lists of class `shinysnap`. Use `snap_inputs()`,
+  `snap_values()`, and `snap_meta()` to inspect them, and `snap_diff()`
+  to compare them.
 
 ## Files
 
-- The canonical format is JSON: doubles written with the fewest digits that
-  round-trip, typed wrappers for what JSON cannot say, deterministic layout.
-  `snap_serialize()`, `snap_unserialize()`, `snap_write()`, and `snap_read()`
-  convert; `snap_write(format = "zip")` writes a bundle that keeps uploaded
-  files and, with `unsupported = "rds"`, opaque R objects. Bundles are validated
-  before extraction; embedded objects and `.rds` files need `trust = TRUE`.
+- Snapshots use JSON, with enough digits to preserve numeric values and
+  extra type information for values such as dates and matrices. A
+  consistent layout makes changes easy to review in version control.
+  `snap_serialize()` and `snap_unserialize()` convert snapshots to and from
+  JSON text; `snap_write()` and `snap_read()` write and read files.
+- `snap_write(format = "zip")` creates a bundle that includes uploaded
+  files. With `unsupported = "rds"`, it can also store R objects that the
+  JSON format does not support. Bundles are checked before extraction.
+  Reading embedded R objects or `.rds` files requires `trust = TRUE`.
 - `snap_download_button()`, `snap_download_handler()`, `snap_file_input()`, and
-  `snap_file_restore()` replace the download and upload boilerplate.
+  `snap_file_restore()` add controls for downloading and uploading snapshot files.
 
 ## Restore
 
-- `snap_restore()` restores a snapshot into the running session: tracked
-  values are written back, `snap_on_restore()` hooks run, and the input
-  values are sent to the browser at once, where the client script applies
-  each one as soon as its input is on the page. shiny's `restoreInput()`
-  mechanism is primed during the restore so dynamic UI is built with the
-  restored values. A second restore cancels the first.
+- `snap_restore()` restores a snapshot in the current session. It restores
+  tracked values, runs `snap_on_restore()` hooks, and sends the input
+  values to the browser. Each input receives its value as soon as it is
+  on the page. Shiny's `restoreInput()` supplies saved values to dynamic
+  inputs as they are created. Starting another restore cancels the first.
 - The restore report lists every input as `applied`, `constructed`,
-  `reapplied`, `missing`, `failed`, `mismatched`, or `skipped`;
-  `snap_on_restored()` hooks and `snap_is_restoring()` complete the
-  server-side API.
-- `snap_restorer()` registers how an input's value becomes the message its
-  binding understands, per binding name or per input id; built-in
-  restorers cover shiny, bslib, and shinyMatrix inputs, and
-  `window.shinysnap.registerAdapter()` is the JavaScript-side equivalent.
+  `reapplied`, `missing`, `failed`, `mismatched`, or `skipped`.
+  `snap_on_restored()` runs code when the restore finishes, and
+  `snap_is_restoring()` tells you whether a restore is in progress.
+- `snap_restorer()` registers a function that converts a saved value into
+  the message an input expects. You can register it for a binding name or
+  an input id. shinysnap includes restorers for shiny, bslib, and
+  shinyMatrix. Use `window.shinysnap.registerAdapter()` to convert messages
+  in JavaScript.
 
 ## Interoperability
 
-- `snap_as_bookmark_url()` encodes a snapshot like URL bookmarking does,
-  `snap_as_test_inputs()` feeds `shiny::testServer()`, and
-  `snap_attachment()` returns the files kept in a bundle.
+- `snap_as_bookmark_url()` turns a snapshot into a Shiny bookmark URL.
+- `snap_as_test_inputs()` prepares saved inputs for `shiny::testServer()`.
+- `snap_attachment()` returns paths to the files stored in a bundle.

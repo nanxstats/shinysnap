@@ -14,28 +14,31 @@ knitr::opts_chunk$set(
 )
 ```
 
-shinysnap restores an input by handing its client-side binding the same
-message the input's `update*()` function would send. For most inputs that
-message is `{value: x}`, and that is the default. Some bindings want more,
-or something else, and for those a *restorer* says what to send. This
-vignette shows how to write one, using the shinyMatrix input that ships
-with the package as the worked example, and how to do the same on the
-JavaScript side with an *adapter*.
+Each Shiny input has an *input binding*: JavaScript code that connects the
+HTML element to Shiny. shinysnap restores an input by sending its binding
+the same message that the input's `update*()` function would send.
 
-## Which bindings are covered
+The default message is `{value: x}`, which works for most inputs. If an
+input expects a different message, you can write a *restorer*: an R
+function that converts the saved value into that message. This vignette
+uses shinyMatrix to show how. It also shows how to convert messages in
+JavaScript with an *adapter*.
+
+## Supported inputs
+
+Use `snap_restorers()` to list the bindings that have a restorer:
 
 ```{r}
 library(shinysnap)
 snap_restorers()
 ```
 
-Everything not listed uses the default `list(value = value)`. Inputs of
-shinyWidgets and other packages are therefore restored with the default
-too, which is right for those whose `receiveMessage()` accepts `{value}`
-and silently wrong for the others. Rather than guess, register a restorer
-for the bindings you use; the recipe below takes a few minutes per input.
+Bindings not listed here receive `list(value = value)`. This includes
+inputs from shinyWidgets and other packages. Check the binding's
+`receiveMessage()` method to see whether it accepts that message. If it
+expects something else, follow the steps below to write a restorer.
 
-## The restorer contract
+## Writing a restorer
 
 A restorer is a function of four arguments that returns the message to send
 as a list, or `NULL` to skip the input:
@@ -44,30 +47,35 @@ as a list, or `NULL` to skip the input:
 function(id, value, binding, session) list(value = value)
 ```
 
-- `id` is the fully namespaced input id.
+- `id` is the full input id, including any module prefixes.
 - `value` is the value stored in the snapshot, exactly what `input$id`
   returned when the snapshot was taken.
-- `binding` is the name the client-side binding was registered under
+- `binding` is the name the JavaScript binding was registered under
   (`"shiny.sliderInput"`, `"shinyMatrix.matrixNumeric"`, ...), as recorded
   in the snapshot's `bindings` section.
 - `session` is the session being restored.
 
-Register it for a binding name, or for one input id, with
-`snap_restorer()`. A registration with `session = NULL` (the default) is
-global, which is what a package or an app's `global.R` wants; a
-registration with a session applies to that session only. Resolution goes
-from the most specific to the least: a session restorer for the id, a
-session restorer for the binding, a global restorer for the id or the
-binding, the built-in one, the default.
+Use `snap_restorer()` to register the function for a binding name or an
+input id. By default, `session = NULL` makes the restorer available to
+all sessions. This is useful in a package or an app's `global.R`. Pass a
+session to limit the restorer to that session.
 
-A restorer must not call `update*()` functions itself. Those go through
+shinysnap uses the first restorer it finds in this order:
+
+1. A restorer for the input id in the current session.
+2. A restorer for the binding in the current session.
+3. A global restorer for the input id, then for the binding.
+4. A restorer included with shinysnap.
+5. The default, `list(value = value)`.
+
+A restorer must return the message so shinysnap can deliver it when the
+input exists. Do not call `update*()` functions inside it: those use
 `session$sendInputMessage()`, which drops messages for inputs that are not
-on the page yet; the whole point of a restorer is to return the payload so
-that shinysnap can deliver it when the input exists.
+on the page yet.
 
-## Finding the payload: the recipe
+## Example: shinyMatrix
 
-1. Open the input's `update*()` function and keep the part that carries
+1. Read the input's `update*()` function and find the part that carries
    the value. For `shinyMatrix::updateMatrixInput()` that is:
 
    ```{r, eval = FALSE}
@@ -79,20 +87,20 @@ message <- list(value = list(
 session$sendInputMessage(inputId, message)
    ```
 
-2. Open the binding's `receiveMessage()` in the package's JavaScript to
-   confirm the shape it reads. shinyMatrix's reads `data.value.data`,
+2. Read the binding's `receiveMessage()` method in the package's
+   JavaScript to check the fields it expects. shinyMatrix reads `data.value.data`,
    `data.value.rownames`, and `data.value.colnames`, and treats missing
    names as empty arrays.
 
-3. Check the binding's `getValue()`, because shinysnap compares it with
-   the expected value after applying the message and reports `mismatched`
-   when they differ. shinyMatrix's returns
+3. Check the binding's `getValue()` method. After applying the message,
+   shinysnap compares its result with the expected value and reports
+   `mismatched` if they differ. shinyMatrix returns
    `{data, rownames, colnames}` with the names as arrays. When that shape
    differs from the message's `value`, attach the expected value as the
    `expect` attribute of the returned list; when the message has no `value`
    key at all, no comparison is made.
 
-4. Write the restorer. The built-in one for shinyMatrix is:
+4. Write the restorer. Here is the one shinysnap uses for shinyMatrix:
 
    ```{r, eval = FALSE}
 restore_matrix <- function(id, value, binding, session) {
@@ -122,23 +130,24 @@ snap_restorer("shinyMatrix.matrixCharacter", restore_matrix)
    for the element. Look at the `bindings` section of a snapshot taken
    from your app to see the name to register for.
 
-5. Restore a snapshot and read the report. `applied` means the message was
-   accepted and the widget shows the value; `mismatched` shows in `detail`
-   what the widget reports instead; `failed` carries the JavaScript error.
+5. Restore a snapshot and read the report. `applied` means the input
+   accepted the message and passed any value comparison. For `mismatched`,
+   the `detail` column shows the value the input reported instead.
+   For `failed`, it contains the JavaScript error.
 
-Payloads are serialized with the same settings `session$sendInputMessage()`
-uses: length-one vectors become scalars, `NULL` becomes `null`, dates become
-`"YYYY-MM-DD"` strings, and matrices become row-major nested arrays. A
-binding that wants an array even for a single value needs `as.list(value)`;
-`radioButtons`, for instance, wants a scalar, while `checkboxGroupInput`
-accepts either.
+Messages are converted to JSON with the same settings as
+`session$sendInputMessage()`. Vectors of length one become scalars, `NULL`
+becomes `null`, dates become `"YYYY-MM-DD"` strings, and matrices become
+nested arrays, one per row. Use `as.list(value)` if the binding needs an
+array even for a single value. For example, `radioButtons` expects a
+scalar, while `checkboxGroupInput` accepts either form.
 
-## Adapters: the JavaScript side
+## Converting messages in JavaScript
 
-Component authors who own the JavaScript can transform the message in the
-browser instead. An adapter receives the message, the element, the binding,
-and the whole record, and returns the message to pass to `receiveMessage()`
-(or `null` to skip the input):
+If you maintain an input's JavaScript code, you can convert the message
+in the browser with an adapter. It receives the message, the HTML element,
+the binding, and the full restore record. It returns the message to pass
+to `receiveMessage()`, or `null` to skip the input:
 
 ```js
 window.shinysnap.registerAdapter("mypkg.fancyInput", function (message, el, binding, record) {
@@ -148,18 +157,20 @@ window.shinysnap.registerAdapter("mypkg.fancyInput", function (message, el, bind
 });
 ```
 
-Adapters run after the R-side restorer and before the `shiny:updateinput`
-event, which is triggered exactly as Shiny's own message handler triggers
-it; a handler that calls `preventDefault()` on that event skips the input
-(reported as `skipped`).
+Adapters run after the R restorer and before the `shiny:updateinput`
+event. shinysnap triggers this event in the same way as Shiny's message
+handler. If an event handler calls `preventDefault()`, the input is
+reported as `skipped`.
 
-## Candidates
+## Inputs that need more work
 
-These inputs are known to need a restorer or an adapter and are not
-covered yet; contributions with a verified payload are welcome:
+The following inputs need a restorer or adapter that shinysnap does not
+yet provide. Contributions that check the expected message format are welcome:
 `shinyWidgets::pickerInput()`, `shinyWidgets::airDatepickerInput()`,
 `shinyWidgets::numericRangeInput()`, `shinyWidgets::sliderTextInput()`,
-and `shinyWidgets::virtualSelectInput()`. Inputs that are not bound
-elements at all (`plotly` events, `DT` row selections, values set from
-JavaScript with `Shiny.setInputValue()`) cannot be restored through a
-binding and are not captured.
+and `shinyWidgets::virtualSelectInput()`.
+
+Some input values have no bound HTML element. Examples include `plotly`
+events, `DT` row selections, and values set from JavaScript with
+`Shiny.setInputValue()`. shinysnap cannot restore these through a binding
+and leaves them out of snapshots.
