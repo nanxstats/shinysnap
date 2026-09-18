@@ -182,15 +182,23 @@ snap_meta <- function(x) {
   as_snapshot(x)$meta
 }
 
-#' Print, format, and coerce snapshot objects
+#' Print, format, and coerce snapshots and restore results
 #'
 #' `print()` shows a compact summary: app name and version, creation time,
 #' and the number and names of inputs, values, and attachments. `format()`
 #' returns the same lines as a character vector. `as.list()` drops the class
 #' and returns the underlying list.
 #'
-#' @param x A snapshot object.
-#' @param ... Ignored.
+#' For a [snap_diff()] result, `print()` shows the changed entries and their
+#' old and new values. For a [snap_restore()] handle, it shows the transaction
+#' id; for a completed restore report, it shows the input statuses and the
+#' elapsed time.
+#'
+#' @param x A snapshot object, a snapshot comparison from [snap_diff()], or
+#'   a restore handle or report from [snap_restore()]. `format()` and
+#'   `as.list()` accept snapshot objects only.
+#' @param ... Passed to [print.data.frame()] when printing a snapshot
+#'   comparison or restore report; ignored otherwise.
 #'
 #' @returns `print()` returns `x` invisibly; `format()` a character vector;
 #'   `as.list()` a plain list.
@@ -203,7 +211,24 @@ snap_meta <- function(x) {
 #'   "inputs": {"n": 100, "rate": 0.025}
 #' }')
 #' print(snap)
+#' format(snap)
 #' names(as.list(snap))
+#' print(snap_diff(snap, list(inputs = list(n = 50, rate = 0.025))))
+#'
+#' if (interactive()) {
+#'   library(shiny)
+#'   ui <- fluidPage(
+#'     numericInput("n", "n", 0),
+#'     actionButton("restore", "Restore state")
+#'   )
+#'   server <- function(input, output, session) {
+#'     observeEvent(input$restore, {
+#'       handle <- snap_restore(list(inputs = list(n = 100)), on_done = print)
+#'       print(handle)
+#'     })
+#'   }
+#'   shinyApp(ui, server)
+#' }
 #' @export
 print.shinysnap <- function(x, ...) {
   cat(format(x), sep = "\n")
@@ -494,6 +519,7 @@ flatten_values <- function(values) {
   out
 }
 
+#' @rdname print.shinysnap
 #' @export
 print.shinysnap_diff <- function(x, ...) {
   if (nrow(x) == 0L) {

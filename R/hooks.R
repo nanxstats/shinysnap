@@ -44,7 +44,7 @@ new_callbacks <- function() {
 #' @param fn A function taking one argument, `state`.
 #' @param session The Shiny session. Defaults to the current session.
 #'
-#' @returns A function that removes the hook again, invisibly.
+#' @returns A function with no arguments that removes the hook when called.
 #'
 #' @examples
 #' if (interactive()) {
@@ -112,7 +112,7 @@ scope_save_hook <- function(fn, session) {
 #'   `report`).
 #' @param session The Shiny session. Defaults to the current session.
 #'
-#' @returns A function that removes the hook again, invisibly.
+#' @returns A function with no arguments that removes the hook when called.
 #'
 #' @examples
 #' if (interactive()) {

@@ -95,7 +95,7 @@ Apps that do this by hand collect `reactiveValuesToList(input)` into an
 special case for matrix inputs, guard every server-side value with
 `is.null()` for files saved by older versions, and send the values of
 dynamic inputs in waves of `shinyjs::delay()`, because messages for inputs
-that are not on the page yet are dropped silently. With shinysnap the
+that are not on the page yet are dropped silently. With shinysnap, the
 server side of such an app becomes:
 
 ``` r
@@ -122,18 +122,18 @@ See `vignette("shinysnap")` for the full comparison and
 
 ## What is in the box
 
-* `snap_take()`, `snap_restore()`: the snapshot and the restore
+- `snap_take()`, `snap_restore()`: the snapshot and the restore
   transaction, with a report.
-* `snap_write()`, `snap_read()`: JSON files, zip bundles that keep uploaded
+- `snap_write()`, `snap_read()`: JSON files, zip bundles that keep uploaded
   files, and (behind `trust = TRUE`) `.rds`.
-* `snap_track()`, `snap_on_save()`, `snap_on_restore()`,
+- `snap_track()`, `snap_on_save()`, `snap_on_restore()`,
   `snap_on_restored()`: server-side values and hooks shaped like shiny's
   bookmarking hooks.
-* `snap_restorer()`: how an input's value becomes the message its binding
+- `snap_restorer()`: how an input's value becomes the message its binding
   understands; built-ins for shiny, bslib, and shinyMatrix inputs.
-* `snap_download_button()`, `snap_download_handler()`,
+- `snap_download_button()`, `snap_download_handler()`,
   `snap_file_input()`, `snap_file_restore()`: the UI boilerplate.
-* `snap_as_bookmark_url()`, `snap_as_test_inputs()`, `snap_diff()`:
+- `snap_as_bookmark_url()`, `snap_as_test_inputs()`, `snap_diff()`:
   interoperate with bookmarking, `testServer()`, and version control.
 
 ## License

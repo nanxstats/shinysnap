@@ -39,13 +39,13 @@ back next month, possibly on a newer version of the app".
 shinysnap reuses the parts of bookmarking's machinery that make sense
 mid-session, so an app that already bookmarks keeps working:
 
-* Ids excluded with `setBookmarkExclude()` are excluded from snapshots too.
-* Values that shiny's serializers mark as unserializable (passwords, and
+- Ids excluded with `setBookmarkExclude()` are excluded from snapshots too.
+- Values that shiny's serializers mark as unserializable (passwords, and
   anything registered with `setSerializer()`) are never captured.
-* During a restore, shinysnap primes the session's restore context, the
+- During a restore, shinysnap primes the session's restore context, the
   object behind `restoreInput()`, with the snapshot's values, and puts the
   previous context back when the restore settles.
-* shinysnap's own internal inputs are marked unserializable, so they never
+- shinysnap's own internal inputs are marked unserializable, so they never
   show up in a bookmark URL.
 
 The hooks mirror each other. `onBookmark(function(state) ...)` writes into

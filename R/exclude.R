@@ -22,6 +22,7 @@
 #'
 #'   server <- function(input, output, session) {
 #'     snap_exclude(c("^btn_", "^nav_"))
+#'     snap_include(c("^model_", "^prefs_"))
 #'   }
 #' }
 #' @export

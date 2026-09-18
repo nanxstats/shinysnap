@@ -82,11 +82,11 @@ the restore is in flight, shiny's \code{restoreInput()} mechanism is primed so
 that dynamic UI is built with the restored values directly.
 }
 \details{
-The function never blocks. It returns a promise that resolves to a
-\emph{restore report} once the browser reports that the page has settled (no
-activity for \code{settle} seconds) or \code{timeout} seconds have passed. The report
-is a data frame with one row per input and the columns \code{id}, \code{status},
-\code{binding}, and \code{detail}, plus the attributes \code{txn}, \code{elapsed} (seconds),
+The function never blocks. It returns a handle containing a promise that
+resolves to a \emph{restore report} once the browser reports that the page has
+settled (no activity for \code{settle} seconds) or \code{timeout} seconds have passed.
+The report is a data frame with one row per input and the columns \code{id},
+\code{status}, \code{binding}, and \code{detail}, plus the attributes \code{txn}, \code{elapsed} (seconds),
 \code{settled}, and \code{timed_out}. Statuses:
 \itemize{
 \item \code{applied}: sent to an input that was on the page.

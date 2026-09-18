@@ -159,13 +159,13 @@ identical(snap_inputs(back), x$inputs)
 
 A bundle is a zip archive with:
 
-* `manifest.json`: exactly the JSON above, with an `attachments` section.
+- `manifest.json`: exactly the JSON above, with an `attachments` section.
   Each entry is a file record: `{"$type": "file", "name": "data.csv",
   "size": 1234, "type": "text/csv", "path": "attachments/upload/data.csv"}`;
   the fields are arrays when a `fileInput()` held several files.
-* `attachments/<id>/<file name>`: the uploaded files. Names are reduced to
+- `attachments/<id>/<file name>`: the uploaded files. Names are reduced to
   `A-Z a-z 0-9 . _ -` and disambiguated with a counter when they repeat.
-* `objects/<n>-<path>.rds`: values written with `unsupported = "rds"`.
+- `objects/<n>-<path>.rds`: values written with `unsupported = "rds"`.
 
 On read, the archive is checked before extraction: entries with `..` or
 absolute paths are refused, and the uncompressed total must stay under

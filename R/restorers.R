@@ -37,8 +37,7 @@ global_restorers <- new.env(parent = emptyenv())
 #'   `"global"`, or `"session"`).
 #'
 #' @examples
-#' # A restorer for a hypothetical widget whose update function sends
-#' # list(selected = value):
+#' # A restorer for a hypothetical widget that expects a selected field:
 #' snap_restorer("mypkg.myInput", function(id, value, binding, session) {
 #'   list(selected = value)
 #' })

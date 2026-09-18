@@ -101,12 +101,12 @@ A `missing` row is the normal outcome for an input that a newer version of
 the app no longer has, or for an input whose UI is not reachable in the
 restored state. Two situations are worth knowing about:
 
-* Outputs on hidden tabs are suspended by default, so a `renderUI()` on a
+- Outputs on hidden tabs are suspended by default, so a `renderUI()` on a
   tab the user is not looking at does not render and its inputs stay
   `missing`. Use `outputOptions(output, "id", suspendWhenHidden = FALSE)`
   for outputs a restore must reach, or include the tab's id in the snapshot
   so the restore switches to it.
-* Inputs created only from JavaScript with `Shiny.setInputValue()` (plot
+- Inputs created only from JavaScript with `Shiny.setInputValue()` (plot
   clicks, table selections) are not bound inputs and cannot be restored
   through a binding; they are not captured in the first place.
 
@@ -159,13 +159,13 @@ observe({
 
 ## Notes on timing
 
-* Inputs with a rate policy (text inputs debounce, sliders throttle) may
+- Inputs with a rate policy (text inputs debounce, sliders throttle) may
   lag the browser by a few hundred milliseconds. A snapshot taken from a
   download handler runs after the click has reached the server, which in
   practice is later than that; do not add delays.
-* A second `snap_restore()` while one is in flight cancels the first, whose
+- A second `snap_restore()` while one is in flight cancels the first, whose
   promise rejects with a condition of class `shinysnap_cancelled`.
-* `snap_restore(use_restore_context = FALSE)` turns the `restoreInput()`
+- `snap_restore(use_restore_context = FALSE)` turns the `restoreInput()`
   accelerator off. Everything still ends in the right state; dynamic inputs
   are then `applied` or `reapplied` instead of `constructed`, and their
   observers see the default value before the restored one. It exists to
