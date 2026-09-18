@@ -164,8 +164,8 @@ observeEvent(input$restore_file, {
 })
 ```
 
-With shinysnap the same app needs no delays, no matrix special case, and
-no per-field fallbacks:
+With shinysnap, the same app needs no delays, no matrix special case,
+and no per-field fallbacks:
 
 ``` r
 

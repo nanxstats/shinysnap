@@ -18,10 +18,13 @@
   [`snap_values()`](https://nanx.me/shinysnap/reference/snap_inputs.md)
   [`snap_meta()`](https://nanx.me/shinysnap/reference/snap_inputs.md) :
   Access the parts of a snapshot
-- [`print(`*`<shinysnap>`*`)`](https://nanx.me/shinysnap/reference/print.shinysnap.md)
+- [`print(`*`<shinysnap_restore>`*`)`](https://nanx.me/shinysnap/reference/print.shinysnap.md)
+  [`print(`*`<shinysnap_report>`*`)`](https://nanx.me/shinysnap/reference/print.shinysnap.md)
+  [`print(`*`<shinysnap>`*`)`](https://nanx.me/shinysnap/reference/print.shinysnap.md)
   [`format(`*`<shinysnap>`*`)`](https://nanx.me/shinysnap/reference/print.shinysnap.md)
   [`as.list(`*`<shinysnap>`*`)`](https://nanx.me/shinysnap/reference/print.shinysnap.md)
-  : Print, format, and coerce snapshot objects
+  [`print(`*`<shinysnap_diff>`*`)`](https://nanx.me/shinysnap/reference/print.shinysnap.md)
+  : Print, format, and coerce snapshots and restore results
 - [`snap_diff()`](https://nanx.me/shinysnap/reference/snap_diff.md) :
   Compare two snapshots
 

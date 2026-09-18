@@ -62,7 +62,8 @@ snap_enable(
 
 ## Value
 
-The per-session controller, invisibly.
+The session's controller, an R6 object, invisibly. It holds the snapshot
+configuration and is intended for internal use.
 
 ## Examples
 

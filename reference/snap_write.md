@@ -94,7 +94,7 @@ cat(readLines(path), sep = "\n")
 #> {
 #>   "format": 1,
 #>   "app": {"name": null, "version": null},
-#>   "created": "2026-09-17T23:10:59Z",
+#>   "created": "2026-09-18T00:45:41Z",
 #>   "producer": {"shinysnap": "0.1.0", "shiny": "1.14.0", "r": "4.6.1"},
 #>   "inputs": {"n": 100, "rate": 0.025},
 #>   "values": {},

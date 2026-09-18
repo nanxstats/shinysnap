@@ -97,7 +97,7 @@ a special case for matrix inputs, guard every server-side value with
 [`is.null()`](https://rdrr.io/r/base/NULL.html) for files saved by older
 versions, and send the values of dynamic inputs in waves of
 `shinyjs::delay()`, because messages for inputs that are not on the page
-yet are dropped silently. With shinysnap the server side of such an app
+yet are dropped silently. With shinysnap, the server side of such an app
 becomes:
 
 ``` r

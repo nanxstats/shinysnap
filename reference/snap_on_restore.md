@@ -30,7 +30,7 @@ snap_on_restored(fn, session = shiny::getDefaultReactiveDomain())
 
 ## Value
 
-A function that removes the hook again, invisibly.
+A function with no arguments that removes the hook when called.
 
 ## Details
 

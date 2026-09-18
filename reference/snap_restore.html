@@ -172,11 +172,11 @@ stall the restore. Use <code>on_done</code>, <code><a href="snap_on_restore.html
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
-    <p>The function never blocks. It returns a promise that resolves to a
-<em>restore report</em> once the browser reports that the page has settled (no
-activity for <code>settle</code> seconds) or <code>timeout</code> seconds have passed. The report
-is a data frame with one row per input and the columns <code>id</code>, <code>status</code>,
-<code>binding</code>, and <code>detail</code>, plus the attributes <code>txn</code>, <code>elapsed</code> (seconds),
+    <p>The function never blocks. It returns a handle containing a promise that
+resolves to a <em>restore report</em> once the browser reports that the page has
+settled (no activity for <code>settle</code> seconds) or <code>timeout</code> seconds have passed.
+The report is a data frame with one row per input and the columns <code>id</code>,
+<code>status</code>, <code>binding</code>, and <code>detail</code>, plus the attributes <code>txn</code>, <code>elapsed</code> (seconds),
 <code>settled</code>, and <code>timed_out</code>. Statuses:</p><ul><li><p><code>applied</code>: sent to an input that was on the page.</p></li>
 <li><p><code>constructed</code>: the input appeared during the restore already carrying
 the value, thanks to <code><a href="https://rdrr.io/pkg/shiny/man/restoreInput.html" class="external-link">restoreInput()</a></code>.</p></li>

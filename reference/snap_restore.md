@@ -119,12 +119,12 @@ or `promises::then(handle$promise, ...)` to work with the report.
 
 ## Details
 
-The function never blocks. It returns a promise that resolves to a
-*restore report* once the browser reports that the page has settled (no
-activity for `settle` seconds) or `timeout` seconds have passed. The
-report is a data frame with one row per input and the columns `id`,
-`status`, `binding`, and `detail`, plus the attributes `txn`, `elapsed`
-(seconds), `settled`, and `timed_out`. Statuses:
+The function never blocks. It returns a handle containing a promise that
+resolves to a *restore report* once the browser reports that the page
+has settled (no activity for `settle` seconds) or `timeout` seconds have
+passed. The report is a data frame with one row per input and the
+columns `id`, `status`, `binding`, and `detail`, plus the attributes
+`txn`, `elapsed` (seconds), `settled`, and `timed_out`. Statuses:
 
 - `applied`: sent to an input that was on the page.
 
