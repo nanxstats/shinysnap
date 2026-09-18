@@ -22,7 +22,8 @@
 #'   restored.
 #' @param session The Shiny session. Defaults to the current session.
 #'
-#' @returns The per-session controller, invisibly.
+#' @returns The session's controller, an R6 object, invisibly. It holds the
+#'   snapshot configuration and is intended for internal use.
 #'
 #' @examples
 #' if (interactive()) {

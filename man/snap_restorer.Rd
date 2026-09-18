@@ -49,8 +49,7 @@ a session restorer for its binding, a global restorer for the id or the
 binding, the built-in restorer for the binding, the default.
 }
 \examples{
-# A restorer for a hypothetical widget whose update function sends
-# list(selected = value):
+# A restorer for a hypothetical widget that expects a selected field:
 snap_restorer("mypkg.myInput", function(id, value, binding, session) {
   list(selected = value)
 })

@@ -39,7 +39,8 @@ restored.}
 \item{session}{The Shiny session. Defaults to the current session.}
 }
 \value{
-The per-session controller, invisibly.
+The session's controller, an R6 object, invisibly. It holds the
+snapshot configuration and is intended for internal use.
 }
 \description{
 Sets the app identity and the defaults used by \code{\link[=snap_take]{snap_take()}} and

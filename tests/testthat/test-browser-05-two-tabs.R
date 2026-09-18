@@ -1,4 +1,5 @@
 test_that("05-two-tabs: a file saved on one tab restores on the other with no delays in app code", {
+  skip_if_not_installed("shinyMatrix")
   app <- start_app("05-two-tabs")
   on.exit(app$stop())
 

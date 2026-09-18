@@ -8,7 +8,7 @@
 \description{
 \if{html}{\figure{logo.png}{options: style='float: right' alt='logo' width='120'}}
 
-Take a snapshot of the state of a running 'shiny' application, the current input values plus any server-side values you register, and write it to a plain, human-readable JSON file that can be shared, kept under version control, and hand-edited. Restore it later into a different session without a page reload and without bookmarking. Restoring waits for inputs rendered dynamically to appear, so no timing guesses are needed, and reports which values were applied, which never appeared, and which failed.
+Save the state of applications built with 'shiny', the web application framework by Chang et al. (2026) \doi{10.32614/CRAN.package.shiny}. Users can share their work and continue it in another session. Input values and selected values held by the server are saved in JSON (JavaScript Object Notation) files that can be read and edited by hand. Saved state can be restored without reloading the page or setting up bookmarking. Restoration waits for inputs that appear as the page changes and reports which values were restored, missing, or could not be applied.
 }
 \seealso{
 Useful links:

@@ -1,4 +1,6 @@
 test_that("04-matrix: matrices, dates, selections, tabs, and bslib components restore", {
+  skip_if_not_installed("bslib")
+  skip_if_not_installed("shinyMatrix")
   app <- start_app("04-matrix")
   on.exit(app$stop())
   s0 <- export_snapshot(app)

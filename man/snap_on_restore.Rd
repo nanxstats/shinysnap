@@ -16,7 +16,7 @@ snap_on_restored(fn, session = shiny::getDefaultReactiveDomain())
 \item{session}{The Shiny session. Defaults to the current session.}
 }
 \value{
-A function that removes the hook again, invisibly.
+A function with no arguments that removes the hook when called.
 }
 \description{
 \code{snap_on_restore()} registers a function that \code{\link[=snap_restore]{snap_restore()}} calls after
