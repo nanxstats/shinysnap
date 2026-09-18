@@ -1,6 +1,5 @@
 test_that("01-basic: the inventory names every core binding and the snapshot is typed", {
   app <- start_app("01-basic")
-  on.exit(app$stop())
 
   inv <- app$get_value(input = ".shinysnap_inventory")
   expected <- c(
@@ -55,7 +54,6 @@ test_that("01-basic: the inventory names every core binding and the snapshot is 
 
 test_that("01-basic: a saved file restores every core input through the upload control", {
   app <- start_app("01-basic")
-  on.exit(app$stop())
   snap <- export_snapshot(app)
   snap$inputs$text <- "restored"
   snap$inputs$textarea <- "one\ntwo"
@@ -84,8 +82,7 @@ test_that("01-basic: a saved file restores every core input through the upload c
 test_that("01-basic: a bundle keeps an uploaded file and restores through the upload control", {
   skip_if_not_installed("zip")
   app <- start_app("01-basic")
-  on.exit(app$stop())
-  csv <- tempfile("data-", fileext = ".csv")
+  csv <- withr::local_tempfile(pattern = "data-", fileext = ".csv")
   writeLines(c("x,y", "1,2", "3,4"), csv)
   app$upload_file(upload = csv)
   app$set_inputs(text = "with upload", filename = "bundled")

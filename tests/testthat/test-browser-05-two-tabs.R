@@ -1,7 +1,6 @@
 test_that("05-two-tabs: a file saved on one tab restores on the other with no delays in app code", {
   skip_if_not_installed("shinyMatrix")
   app <- start_app("05-two-tabs")
-  on.exit(app$stop())
 
   inv0 <- app$get_value(input = ".shinysnap_inventory")
   app$set_inputs(model = "complex")
@@ -56,7 +55,7 @@ test_that("05-two-tabs: a file saved on one tab restores on the other with no de
 
   # A file that fails validation leaves the state alone.
   bad <- new_snapshot(inputs = list(unrelated = 1L), app = list(name = "shinysnap-two-tabs"))
-  path <- tempfile(fileext = ".json")
+  path <- withr::local_tempfile(fileext = ".json")
   snap_write(bad, path)
   app$upload_file(btn_restore_main = path)
   app$wait_for_idle(duration = 500, timeout = 10000)
