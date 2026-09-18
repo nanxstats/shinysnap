@@ -26,7 +26,10 @@ test_that("browser teardown removes child-process files, including after an erro
     browser <<- local_test_browser()
     chrome_tmp <<- Sys.getenv("TMPDIR")
     expect_identical(tempdir(), r_temp)
-    expect_identical(dirname(chrome_tmp), r_temp)
+    expect_identical(
+      normalizePath(dirname(chrome_tmp), winslash = "/", mustWork = TRUE),
+      normalizePath(r_temp, winslash = "/", mustWork = TRUE)
+    )
     expect_identical(unname(Sys.getenv(vars)), rep(chrome_tmp, 3))
     expect_identical(chromote::default_chromote_object(), browser)
     status <- system2(

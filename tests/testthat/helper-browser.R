@@ -18,8 +18,11 @@ example_app <- function(name) {
 # Keep Chrome's own files (including com.google.Chrome.* on Linux) inside a
 # directory we own, and stop the browser before withr removes that directory.
 local_test_browser <- function(.local_envir = parent.frame()) {
+  # R CMD check nests tempdir() under working_dir. Keep the prefix short so
+  # Chrome's appended com.google.Chrome.XXXXXX/SingletonSocket still fits in
+  # Linux's 108-byte Unix-domain socket address (including its terminator).
   chrome_tmp <- withr::local_tempdir(
-    pattern = "shinysnap-chrome-", .local_envir = .local_envir
+    pattern = "snap-", .local_envir = .local_envir
   )
   withr::local_envvar(
     c(TMPDIR = chrome_tmp, TMP = chrome_tmp, TEMP = chrome_tmp),

@@ -68,6 +68,9 @@ Practicalities:
   an owned temporary directory. Suite teardown closes Chrome before removing
   that directory; `AppDriver$stop()` alone only closes a browser session and
   can leave `com.google.Chrome.*` detritus in the check's temporary directory.
+  Keep the directory prefix short: the nested check path plus Chrome's
+  `SingletonSocket` path must fit Linux's 108-byte Unix-domain socket address.
+  Normalize filesystem paths before comparing them in cross-platform tests.
 - When the R side sends a message but nothing happens in the browser,
   inspect `window.shinysnap.transaction()` and set
   `window.shinysnap.debug = true` (or `snap_enable(verbose = TRUE)`) to get
