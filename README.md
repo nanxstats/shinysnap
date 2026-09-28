@@ -1,6 +1,7 @@
 # shinysnap <a href="https://nanx.me/shinysnap/"><img src="man/figures/logo.png" align="right" height="139" alt="shinysnap website" /></a>
 
 <!-- badges: start -->
+[![CRAN status](https://www.r-pkg.org/badges/version/shinysnap)](https://cran.r-project.org/package=shinysnap)
 [![R-CMD-check](https://github.com/nanxstats/shinysnap/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/nanxstats/shinysnap/actions/workflows/R-CMD-check.yaml)
 <!-- badges: end -->
 
@@ -20,7 +21,13 @@ to check for unexpected changes. shinysnap does not take screenshots.
 
 ## Installation
 
-You can install the development version of shinysnap from GitHub with:
+You can install shinysnap from CRAN:
+
+``` r
+install.packages("shinysnap")
+```
+
+Or try the development version from GitHub:
 
 ``` r
 # install.packages("pak")
