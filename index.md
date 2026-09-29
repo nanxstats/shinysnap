@@ -20,7 +20,14 @@ check for unexpected changes. shinysnap does not take screenshots.
 
 ## Installation
 
-You can install the development version of shinysnap from GitHub with:
+You can install shinysnap from CRAN:
+
+``` r
+
+install.packages("shinysnap")
+```
+
+Or try the development version from GitHub:
 
 ``` r
 
